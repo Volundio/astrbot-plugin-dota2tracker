@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.templates.title">Templates</title>
+<style>
+/*@COMMON_CSS@*/
+.layout { display: grid; gap: 12px; grid-template-columns: minmax(240px, 320px) 1fr; align-items: start; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+.form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.form-row select { width: 100%; }
+.preview-box { min-height: 200px; background: var(--surface-2); border-radius: 6px; padding: 8px; overflow: auto; text-align: center; }
+.preview-box img { max-width: 100%; height: auto; display: inline-block; background: #fff; }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.templates.title">Templates</h1>
+  <span class="spacer"></span>
+  <button type="button" id="reload" data-i18n="views.common.reload"></button>
+</header>
+<main id="content"></main>
+
+<script>
+/*@COMMON_JS@*/
+
+const state = { data: null, error: null, loading: true, template: "", locale: "", variant: "", preview: null, previewError: null, rendering: false };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  state.loading = true;
+  render();
+  try {
+    state.data = await bridge.apiGet("templates");
+    state.error = null;
+    const names = state.data.templates.map((x) => x.name);
+    if (!names.includes(state.template)) state.template = names[0] || "";
+    if (!state.data.locales.includes(state.locale)) state.locale = state.data.locales.includes(locale()) ? locale() : state.data.locales[0] || "";
+    fixVariant();
+  } catch (error) {
+    state.error = error;
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+function current() {
+  return (state.data && state.data.templates.find((x) => x.name === state.template)) || null;
+}
+
+function fixVariant() {
+  const tpl = current();
+  if (!tpl || !tpl.variants.includes(state.variant)) state.variant = tpl ? tpl.variants[0] || "" : "";
+}
+
+async function renderPreview(button) {
+  state.rendering = true;
+  state.previewError = null;
+  renderPreviewBox();
+  try {
+    state.preview = await busy(button, () => bridge.apiPost("templates/preview", { template: state.template, locale: state.locale, variant: state.variant }));
+  } catch (error) {
+    state.preview = null;
+    state.previewError = error;
+  } finally {
+    state.rendering = false;
+    renderPreviewBox();
+  }
+}
+
+function variantLabel(v) {
+  return v ? t(`views.templates.variants.${v}`, null, v) : t("views.templates.variants.default");
+}
+
+function select(labelKey, value, options, onChange) {
+  const node = h("select", {}, options.map(([v, label]) => h("option", { value: v, text: label })));
+  node.value = value;
+  node.addEventListener("change", () => onChange(node.value));
+  return h("label", { class: "form-row" }, h("span", { class: "small muted", text: t(labelKey) }), node);
+}
+
+function controlsCard() {
+  const d = state.data;
+  const tpl = current();
+  const btn = h("button", { type: "button", class: "primary", text: t("views.templates.render"), disabled: !tpl, onclick: () => renderPreview(btn) });
+  return h("section", { class: "card" },
+    h("h2", { text: t("views.templates.previewSettings") }),
+    select("views.templates.template", state.template,
+      d.templates.map((x) => [x.name, `${t(`views.templates.kinds.${x.kind}`, null, x.kind)} / ${x.name}`]),
+      (v) => { state.template = v; fixVariant(); state.preview = null; render(); }),
+    select("views.templates.locale", state.locale, d.locales.map((l) => [l, t(`views.common.locales.${l}`, null, l)]), (v) => { state.locale = v; }),
+    tpl && tpl.variants.length > 1
+      ? select("views.templates.variant", state.variant, tpl.variants.map((v) => [v, variantLabel(v)]), (v) => { state.variant = v; })
+      : null,
+    h("p", { class: "muted small", text: t("views.templates.fixtureHint") }),
+    btn);
+}
+
+function renderPreviewBox() {
+  const box = $("previewBox");
+  const meta = $("previewMeta");
+  if (!box) return;
+  meta.textContent = "";
+  if (state.rendering) return setContent(box, stateBox("loading", t("views.templates.rendering")));
+  if (state.previewError) return setContent(box, stateBox("error", errorText(state.previewError)));
+  const p = state.preview;
+  if (!p) return setContent(box, stateBox("empty", t("views.templates.noPreview")));
+  // Only accept inline image data URLs returned by our backend.
+  if (typeof p.image !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(p.image)) {
+    return setContent(box, stateBox("error", t("views.common.errors.unknown", { message: "invalid image" })));
+  }
+  meta.textContent = `${p.mime} · ${fmtBytes(p.bytes)}`;
+  setContent(box, h("img", { src: p.image, alt: t("views.templates.previewAlt", { name: state.template }) }));
+}
+
+function rendererCard() {
+  const r = state.data.renderer || {};
+  return h("section", { class: "card" },
+    h("div", { class: "card-head" }, h("h2", { text: t("views.templates.renderer") })),
+    h("p", { class: "muted small", text: t("views.templates.systemFonts") }),
+    h("dl", { class: "kv" },
+      h("dt", { text: t("views.templates.renderStats") }),
+      h("dd", { text: t("views.templates.renderStatsValue", { renders: fmtNumber(r.renders || 0), failures: fmtNumber(r.failures || 0) }) }),
+      r.last_error ? [h("dt", { text: t("views.overview.lastRenderError") }), h("dd", {}, h("code", { text: r.last_error }))] : null));
+}
+
+function render() {
+  const content = $("content");
+  $("reload").disabled = state.loading;
+  if (state.loading && !state.data) return setContent(content, stateBox("loading"));
+  if (!state.data) return setContent(content, stateBox("error", errorText(state.error), load));
+  if (!state.data.templates.length) return setContent(content, stateBox("empty", t("views.templates.empty")));
+  setContent(content,
+    h("div", { class: "layout" },
+      h("div", { class: "stack" }, controlsCard(), rendererCard()),
+      h("section", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", { text: t("views.templates.preview") }), h("span", { class: "spacer" }), h("span", { id: "previewMeta", class: "muted small" })),
+        h("div", { id: "previewBox", class: "preview-box" }))));
+  renderPreviewBox();
+}
+
+$("reload").addEventListener("click", load);
+
+let started = false;
+boot(() => {
+  render();
+  if (!started) {
+    started = true;
+    load();
+  }
+});
+</script>
+</body>
+</html>

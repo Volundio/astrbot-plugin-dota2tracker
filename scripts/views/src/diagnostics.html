@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.diagnostics.title">Diagnostics</title>
+<style>
+/*@COMMON_CSS@*/
+.check-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.check-row + .check-row { margin-top: 8px; }
+.check-row .name { min-width: 90px; font-weight: 500; }
+.check-row .result { flex: 1; min-width: 160px; }
+pre.config { margin: 0; max-height: 360px; overflow: auto; background: var(--surface-2); padding: 10px; border-radius: 6px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-all; }
+details summary { cursor: pointer; }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.diagnostics.title">Diagnostics</h1>
+  <span class="spacer"></span>
+  <div class="toolbar">
+    <button type="button" id="download" data-i18n="views.diagnostics.download"></button>
+    <button type="button" id="reload" data-i18n="views.common.reload"></button>
+  </div>
+</header>
+<main id="content"></main>
+
+<script>
+/*@COMMON_JS@*/
+
+const API_TARGETS = ["stratz", "valve", "opendota"];
+const state = { data: null, error: null, loading: true, checks: {} };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  state.loading = true;
+  render();
+  try {
+    state.data = await bridge.apiGet("diagnostics");
+    state.error = null;
+  } catch (error) {
+    state.error = error;
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+function card(titleKey, headExtra, ...body) {
+  return h("section", { class: "card" },
+    h("div", { class: "card-head" }, h("h2", { text: t(titleKey) }), h("span", { class: "spacer" }), headExtra),
+    ...body);
+}
+
+function kv(rows) {
+  return h("dl", { class: "kv" }, rows.map(([label, value]) => [h("dt", { text: label }), h("dd", {}, value)]));
+}
+
+/* ---------- API checks ---------- */
+async function runCheck(target, button) {
+  const ok = await askConfirm(t("views.diagnostics.confirmCheck", { target: t(`views.diagnostics.targets.${target}`) }), { danger: false, confirmText: t("views.diagnostics.check") });
+  if (!ok) return;
+  state.checks[target] = { running: true };
+  render();
+  try {
+    state.checks[target] = await busy(button, () => bridge.apiPost("api-check", { target }));
+  } catch (error) {
+    state.checks[target] = { failed: errorText(error) };
+  }
+  render();
+}
+
+function checkResult(result) {
+  if (!result) return h("span", { class: "muted small", text: t("views.diagnostics.notChecked") });
+  if (result.running) return h("span", { class: "small" }, h("span", { class: "spinner" }), t("views.diagnostics.checking"));
+  if (result.failed) return h("span", { class: "small", style: "color:var(--danger)", text: result.failed });
+  return h("span", { class: "badges" },
+    result.ok ? badge(t("views.diagnostics.reachable"), "ok") : badge(t("views.diagnostics.unreachable"), "danger"),
+    h("span", { class: "small muted", text: `${fmtNumber(result.ms)} ms` }),
+    result.message ? h("code", { text: result.message }) : null);
+}
+
+function apiCard(d) {
+  const q = d.queues || {};
+  return card("views.diagnostics.apiChecks", null,
+    API_TARGETS.map((target) => {
+      const disabled = target === "opendota" && (q.opendota === null || q.opendota === undefined);
+      const btn = h("button", { type: "button", class: "small", text: t("views.diagnostics.check"), disabled: disabled || (state.checks[target] && state.checks[target].running) });
+      btn.addEventListener("click", () => runCheck(target, btn));
+      return h("div", { class: "check-row" },
+        h("span", { class: "name", text: t(`views.diagnostics.targets.${target}`) }),
+        h("span", { class: "small muted", text: disabled ? t("views.diagnostics.queueDisabled") : t("views.diagnostics.queue", { n: fmtNumber(q[target]) }) }),
+        btn,
+        h("span", { class: "result" }, disabled ? null : checkResult(state.checks[target])));
+    }));
+}
+
+/* ---------- cache ---------- */
+async function clearCache(namespace, button) {
+  const message = namespace === "*expired" ? t("views.diagnostics.confirmPurge") : t("views.diagnostics.confirmClear", { namespace });
+  if (!(await askConfirm(message, { confirmText: t("views.diagnostics.clear") }))) return;
+  try {
+    const result = await busy(button, () => bridge.apiPost("cache/clear", { namespace }));
+    state.data.cache = result.cache;
+    const removed = Object.values(result.removed || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    toast(t("views.diagnostics.cleared", { n: fmtNumber(removed) }), "ok");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  render();
+}
+
+function cacheCard(d) {
+  const rows = d.cache || [];
+  const purge = h("button", { type: "button", class: "small danger", text: t("views.diagnostics.purgeExpired") });
+  purge.addEventListener("click", () => clearCache("*expired", purge));
+  const col = (k) => t(`views.diagnostics.cacheCols.${k}`);
+  return card("views.diagnostics.cache", purge,
+    rows.length ? h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+      h("thead", {}, h("tr", {}, ["namespace", "entries", "bytes", "expired"].map((k) => h("th", { text: col(k) })), h("th", {}))),
+      h("tbody", {}, rows.map((row) => {
+        const btn = h("button", { type: "button", class: "small danger", text: t("views.diagnostics.clear") });
+        btn.addEventListener("click", () => clearCache(row.namespace, btn));
+        return h("tr", {},
+          h("td", { "data-label": col("namespace") }, h("code", { text: row.namespace })),
+          h("td", { "data-label": col("entries"), text: fmtNumber(row.entries) }),
+          h("td", { "data-label": col("bytes"), text: fmtBytes(row.bytes) }),
+          h("td", { "data-label": col("expired") }, row.expired ? badge(fmtNumber(row.expired), "warn") : "0"),
+          h("td", { class: "actions" }, btn));
+      })))) : stateBox("empty", t("views.diagnostics.cacheEmpty")));
+}
+
+/* ---------- state, issues, errors, audit ---------- */
+function stateCard(d) {
+  const s = d.scheduler || {};
+  const c = d.counts || {};
+  return card("views.diagnostics.runtime", null, kv([
+    [t("views.diagnostics.schemaVersion"), String(d.schemaVersion ?? "-")],
+    [t("views.overview.scheduler"), s.running ? badge(t("views.common.running"), "ok") : badge(t("views.common.stopped"), "warn")],
+    [t("views.overview.startedAt"), fmtTime(s.startedAt)],
+    [t("views.overview.ticks"), fmtNumber(s.ticks)],
+    [t("views.overview.activeJobs"), fmtNumber(s.activeJobs)],
+    ...Object.entries(c).map(([key, value]) => [t(`views.diagnostics.countLabels.${key}`, null, key), fmtNumber(value)]),
+  ]));
+}
+
+function issuesCard(d) {
+  const issues = d.issues || [];
+  return card("views.diagnostics.configCheck", null,
+    issues.length ? h("ul", { class: "plain" }, issues.map((i) => h("li", { class: "badges" },
+      badge(t(`views.common.level.${i.level}`, null, i.level), i.level === "error" ? "danger" : "warn"),
+      h("code", { text: i.field }), h("span", { text: i.message }))))
+      : h("div", { class: "banner ok", text: t("views.diagnostics.configOk") }),
+    h("details", { style: "margin-top:10px" },
+      h("summary", { class: "small", text: t("views.diagnostics.redactedConfig") }),
+      h("pre", { class: "config", text: JSON.stringify(d.config || {}, null, 2) })));
+}
+
+function errorsCard(d) {
+  const errors = d.recentErrors || [];
+  const clearBtn = h("button", { type: "button", class: "small danger", text: t("views.diagnostics.clearErrors"), disabled: !errors.length });
+  clearBtn.addEventListener("click", async () => {
+    if (!(await askConfirm(t("views.diagnostics.confirmClearErrors"), { confirmText: t("views.diagnostics.clear") }))) return;
+    try {
+      await busy(clearBtn, () => bridge.apiPost("errors/clear", {}));
+      state.data.recentErrors = [];
+      toast(t("views.diagnostics.errorsCleared"), "ok");
+    } catch (error) {
+      toast(errorText(error), "danger");
+    }
+    render();
+  });
+  const col = (k) => t(`views.common.errorCols.${k}`);
+  return card("views.overview.recentErrors", clearBtn,
+    errors.length ? h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+      h("thead", {}, h("tr", {}, ["time", "source", "type", "message"].map((k) => h("th", { text: col(k) })))),
+      h("tbody", {}, errors.map((e) => h("tr", {},
+        h("td", { "data-label": col("time"), class: "small", text: fmtTime(e.timestamp) }),
+        h("td", { "data-label": col("source") }, h("code", { text: e.source || "-" })),
+        h("td", { "data-label": col("type"), text: e.type }),
+        h("td", { "data-label": col("message") }, h("code", { text: e.message })))))))
+      : stateBox("empty", t("views.overview.noErrors")));
+}
+
+function auditCard(d) {
+  const audit = d.audit || [];
+  const col = (k) => t(`views.diagnostics.auditCols.${k}`);
+  return card("views.diagnostics.audit", null,
+    audit.length ? h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+      h("thead", {}, h("tr", {}, ["time", "actor", "action", "detail"].map((k) => h("th", { text: col(k) })))),
+      h("tbody", {}, audit.map((a) => h("tr", {},
+        h("td", { "data-label": col("time"), class: "small", text: fmtTime(a.created_at) }),
+        h("td", { "data-label": col("actor") }, h("code", { text: a.actor })),
+        h("td", { "data-label": col("action"), text: t(`views.diagnostics.actions.${a.action}`, null, a.action) }),
+        h("td", { "data-label": col("detail") }, a.detail && Object.keys(a.detail).length ? h("code", { text: JSON.stringify(a.detail) }) : "-"))))))
+      : stateBox("empty", t("views.diagnostics.auditEmpty")));
+}
+
+function render() {
+  const content = $("content");
+  $("reload").disabled = state.loading;
+  if (state.loading && !state.data) return setContent(content, stateBox("loading"));
+  if (!state.data) return setContent(content, stateBox("error", errorText(state.error), load));
+  const d = state.data;
+  setContent(content, h("div", { class: "stack" },
+    h("div", { class: "grid" }, stateCard(d), apiCard(d)),
+    issuesCard(d),
+    cacheCard(d),
+    errorsCard(d),
+    auditCard(d)));
+}
+
+$("reload").addEventListener("click", load);
+$("download").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+  try {
+    await bridge.download("diagnostic-export", {}, "dota2tracker-diagnostics.json");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+}));
+
+let started = false;
+boot(() => {
+  render();
+  if (!started) {
+    started = true;
+    load();
+  }
+});
+</script>
+</body>
+</html>

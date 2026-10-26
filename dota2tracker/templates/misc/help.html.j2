@@ -1,0 +1,25 @@
+{#- Port of MessageBuilder.buildHelpMessage + _createTableHTML (old/src/app/presentation/message.builder.ts).
+    Rendered with a tiny viewport: max-content replaces fit-content, capped at 1280 - 2 * 12px. -#}
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body { width: max-content; max-width: 1256px; height: fit-content; margin: 0; padding: 12px; }
+      .table div:not(.row) { background-color: #fff; padding: 4px; }
+    </style>
+  </head>
+  <body>
+    {% if header %}<header>{{ header }}</header>{% endif %}
+    <div class="table" style="display:grid;grid-template-columns:repeat({{ columnCount }},auto);background-color:#000;gap:1px;border:#000 solid 1px;text-align:left">
+      <div class="row" style="display:contents;">
+        {% if tableHeaders %}{% for cell in tableHeaders %}<div>{{ cell }}</div>{% endfor %}
+        {% else %}{% for key in headerKeys %}<div>{{ t("commands.dota2tracker.help.messages.table_headers." ~ key) }}</div>{% endfor %}{% endif %}
+      </div>
+      {% for row in rows %}
+      <div class="row" style="display:contents;">
+        {% for cell in row %}<div>{{ cell }}</div>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </body>
+</html>

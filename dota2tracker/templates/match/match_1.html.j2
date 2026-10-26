@@ -1,0 +1,221 @@
+{#- Port of old/src/templates/match/match_1.ejs (+ match_1/main.ejs, player.ejs, item.ejs).
+    All values come from presentation/viewmodels/match.py; the template only lays them out. -#}
+{% macro item_cell(item, style) -%}
+<div class="relative {{ style }}"{% if item and item.isRecipe %} style="background-image: url('{{ img('recipe', 'items') }}');"{% else %} style=""{% endif %}>
+  {% if item %}
+  <img class="w-full h-full object-cover aspect-[11/8] {{ 'opacity-75 scale-[0.6] origin-top-right' if item.isRecipe else '' }}" src="{{ item.img }}">
+  <p class="absolute w-full text-[#ccc] text-center bottom-0 leading-[1] text-xs bg-stone-700/50">{{ item.time }}</p>
+  {% endif %}
+</div>
+{%- endmacro %}
+{% macro neutral_cell(neutral, style) -%}
+<div class="relative {{ style }}" style="">
+  {% if neutral.img %}
+  <img class="w-full h-full object-contain" src="{{ neutral.img }}">
+  {% endif %}
+</div>
+{%- endmacro %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match</title>
+    <style>
+    {{ css("match/match_1/base.css") }}
+    {{ css("match/match_1/style.css") }}
+    </style>
+  </head>
+  <body class="bg-black w-[800px] text-white">
+<div class="w-[790px] h-[100px] flex justify-between box m-[5px]">
+  <div class="flag w-[100px] h-full flex justify-center items-end bg-cover {{ 'grayscale' if not radiantWon else '' }}" style="background-image: url('{{ flagRadiant }}')">
+    {{ t("dota2tracker.template.won") if radiantWon else "" }}
+  </div>
+  <div class="details grow relative flex-col flex">
+    <p class="w-full flex justify-around">
+      <span>{{ t("dota2tracker.template.match_id_") }}{{ match.id | js }}</span>
+      <span>{{ t("dota2tracker.template.game_mode_") }}{{ gameModeStr }}</span>
+      <span>{{ t("dota2tracker.template.region_") }}{{ regionStr }}</span>
+    </p>
+    <p class="w-full flex justify-around">
+      <span>{{ t("dota2tracker.template.start_time_") }}{{ startTime }}</span>
+      <span>{{ t("dota2tracker.template.end_time_") }}{{ endTime }}</span>
+    </p>
+    <p class="w-full grow score flex justify-evenly items-end">
+      <span class="score radiant text-3xl">{{ match.radiant.killsCount | js }}</span>
+      <span class="time text-sm">{{ match.durationTime }}</span>
+      <span class="score dire text-3xl">{{ match.dire.killsCount | js }}</span>
+    </p>
+    <div class="rank absolute w-[64px] h-[64px] bottom-[10px] left-1/2 -translate-x-1/2{{ ' grayscale' if rankGray else '' }}">
+      <img class="star absolute w-full" src="{{ rankStarImg }}">
+      <img class="medal absolute w-full" src="{{ rankMedalImg }}">
+    </div>
+  </div>
+  <div class="flag w-[100px] h-full flex justify-center items-end bg-cover {{ 'grayscale' if radiantWon else '' }}" style="background-image: url('{{ flagDire }}')">
+    {{ t("dota2tracker.template.won") if not radiantWon else "" }}
+  </div>
+</div>
+
+<div class="w-[790px] grid grid-cols-2 gap-[5px] mx-[5px]">
+  {% for p in players %}
+<div class="box h-[320px] flex flex-col gap-[4px] rounded-[5px]" style="{{ p.gridStyle }}">
+  <section class="grid grid-cols-[112px_1fr_100px] grid-rows-[63px_24px]">
+    <div class="avatar relative h-full relative row-1 col-1 text-[10px] text-shadow-[-1px_1px_2px_#000,1px_-1px_2px_#000,-1px_1px_2px_#000,1px_1px_2px_#000]">
+      {% if p.leaver %}
+      <img class="leaver absolute w-full h-full object-contain" src="{{ img('disconnected') }}" />
+      {% endif %}
+      <div class="party contents">
+        <i class="party_line absolute w-full h-[2px]" style="{{ p.partyLineStyle }}"></i>
+        <b class="party_mark absolute leading-[1.5] w-[16px] top-[3px] left-[2px] bg-black/80 text-center" style="{{ p.partyMarkStyle }}">
+          {{ p.partyMark }}
+        </b>
+      </div>
+      <div class="hero_info absolute top-[3px] right-0 text-right leading-[1.25]">
+        <p class="order" style="color: {{ p.orderColor }};">
+          {{ p.orderText }}
+        </p>
+        <p class="position">{{ p.positionText }}</p>
+      </div>
+      <p class="level absolute bottom-0 right-0 text-xs px-[2px]">{{ p.level | js }}</p>
+      <img class="h-full" src="{{ p.heroImg }}" />
+    </div>
+    <div class="player_profile mx-[10px] row-1 col-2 w-auto h-full overflow-hidden text-center flex flex-col justify-around leading-[1]">
+      <p class="player_name truncate max-w-full">{{ p.name }}</p>
+      <p class="flex gap-[12px] justify-center">
+        <span class="kda">{{ p.kills | js }}/{{ p.deaths | js }}/{{ p.assists | js }}</span>
+        <span class="kc" style="{{ p.kcStyle }}">{{ p.kcVal }}%</span>
+        <span class="dc" style="{{ p.dcStyle }}">{{ p.dcVal }}%</span>
+      </p>
+      <p class="flex gap-[16px] justify-center">
+        <span class="networth text-[rgb(203,176,42)]">{{ p.networth | js }}</span>
+        <span class="score">{{ p.score }}</span>
+      </p>
+    </div>
+    <div class="lane_rank row-1 col-3 flex w-full h-full justify-between">
+      <div class="lane w-[44px] h-full">
+        <p class="text-[10px] text-center">{{ p.laneText }}</p>
+        <div class="h-[44px] w-[44px]"><img src="{{ p.laneImg }}" /></div>
+      </div>
+      <div class="rank_plus w-[36px] h-full relative text-[10px] leading-[1.15] text-shadow-[-1px_1px_0_#000,1px_-1px_0_#000,-1px_1px_0_#000,1px_1px_0_#000]">
+        <div class="rank absolute top-0 size-[36px] z-2">
+          <img class="medal absolute inset-0" src="{{ p.medalImg }}"/>
+          <img class="stars absolute inset-0" src="{{ p.starImg }}" />
+          <p class="leader absolute bottom-0 text-center w-full">{{ p.leaderboard | js if p.leaderboard != "" else "" }}</p>
+        </div>
+        {% if p.dotaPlus %}
+        <div class="plus absolute bottom-0 size-[36px] z-1">
+          <img class="" src="{{ p.plusImg }}">
+          <p class="level absolute bottom-0 text-center w-full">{{ p.plusLevel | js if p.plusLevel is not none else "" }}</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="titles row-2 col-start-1 col-end-3 w-full flex items-center pl-[10px] gap-[10px]">
+      {% for title in p.titles %}
+        <span style="color: {{ title.color }};">{{ title.shortText }}</span>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if not p.isBear %}
+  <section class="items w-full grid grid-cols-[repeat(3,3fr)_2fr_3fr] grid-rows-2">
+    <div class="items_main contents">
+      {% for i in range(6) %}
+        {{ item_cell(p.items[i] if i < p.items|length else none, "col-" ~ (i % 3 + 1)) }}
+      {% endfor %}
+    </div>
+    <div class="items_backpack grayscale col-4 row-start-1 row-span-2 flex flex-col">
+      {% for i in range(3) %}
+        {{ item_cell(p.backpacks[i] if i < p.backpacks|length else none, "") }}
+      {% endfor %}
+    </div>
+    <div class="items_neutral contents">
+      {{ neutral_cell(p.neutral, "row-start-1 row-span-2 col-5 flex items-center h-full") }}
+    </div>
+  </section>
+  {% else %}
+  <section class="items w-full grid grid-cols-[repeat(6,3fr)_10fr] grid-rows-4">
+    <div class="items_hero contents">
+      <div class="items_main contents">
+        {% for i in range(6) %}
+          {{ item_cell(p.items[i] if i < p.items|length else none, "row-1 col-" ~ (i + 1)) }}
+        {% endfor %}
+      </div>
+      <div class="items_backpack grayscale contents">
+        {% for i in range(3) %}
+          {{ item_cell(p.backpacks[i] if i < p.backpacks|length else none, "row-2 col-" ~ (i + 1)) }}
+        {% endfor %}
+      </div>
+      <div class="items_neutral contents">
+        {{ neutral_cell(p.neutral, "row-2 col-6") }}
+      </div>
+    </div>
+    <div class="items_unit contents">
+      <div class="items_main contents">
+        {% for i in range(6) %}
+          {{ item_cell(p.unitItems[i] if i < p.unitItems|length else none, "row-3 col-" ~ (i + 1)) }}
+        {% endfor %}
+      </div>
+      <div class="items_backpack grayscale contents">
+        {% for i in range(3) %}
+          {{ item_cell(p.unitBackpacks[i] if i < p.unitBackpacks|length else none, "row-4 col-" ~ (i + 1)) }}
+        {% endfor %}
+      </div>
+      <div class="items_neutral contents">
+        {{ neutral_cell(p.unitNeutral, "row-4 col-6") }}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="buffs_supports w-full h-[24px] flex justify-between">
+    <div class="buffs flex h-[24px]">
+      {% for buff in p.buffs %}
+      <div class="relative">
+        <img class="w-[33px] h-[24px]" src="{{ buff.img }}" />
+        <p class="count absolute w-full bottom-0 leading-[1] text-center bg-stone-700/50 text-[10px]">{{ buff.count | js if buff.count != "" else "" }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="supports flex h-[24px]">
+      {% for support in p.supports %}
+      <div class="relative">
+        <img class="w-[33px] h-[24px]" src="{{ support.img }}" />
+        <p class="count absolute w-full bottom-0 leading-[1] text-center bg-stone-700/50 text-[10px]">{{ support.count | js if support.count != "" else "" }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="player-stat h-full flex flex-col justify-around text-[13px] leading-[24px] whitespace-nowrap">
+    <p class="w-full flex justify-around">
+      <span>{{ t("dota2tracker.template.hero_damage_") }}<span class="hero_damage">{{ p.heroDamage | js }}</span></span>
+      <span>{{ t("dota2tracker.template.building_damage_") }}<span class="building_damage">{{ p.towerDamage | js }}</span></span>
+      <span>{{ t("dota2tracker.template.damage_received_") }}<span class="tak">{{ p.damageReceived | js }}</span></span>
+    </p>
+    <p class="w-full flex justify-around">
+      <span>{{ t("dota2tracker.template.lasthit_") }}<span class="lh">{{ p.lastHits | js }}</span>/<span class="dn">{{ p.denies | js }}</span></span>
+      <span>{{ t("dota2tracker.template.GPM/XPM_") }}<span class="gpm">{{ p.gpm | js }}</span>/<span class="xpm">{{ p.xpm | js }}</span></span>
+      <span>{{ t("dota2tracker.template.heal_") }}<span class="heal">{{ p.heal | js }}</span></span>
+    </p>
+    <p class="w-full flex justify-center">
+      <span>{{ t("dota2tracker.template.crowd_control_duration_") }}</span>
+      <span>{{ p.ccStun ~ "/" }}</span>
+      <span>{{ p.ccSlow ~ "/" }}</span>
+      <span>{{ p.ccDisable }}</span>s
+    </p>
+  </section>
+</div>
+  {% endfor %}
+</div>
+
+<div class="ban_list box m-[5px] flex flex-wrap">
+  {% for ban in bans %}
+  <div class="ban_hero relative w-[10%]">
+    <i class="absolute w-full h-full z-1" style="{{ banStyle }}"></i>
+    <img class="grayscale" src="{{ ban }}" alt="" />
+  </div>
+  {% endfor %}
+</div>
+  </body>
+</html>

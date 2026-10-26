@@ -1,0 +1,175 @@
+{#- Port of old/src/templates/item/item.ejs (+ item/recipe.ejs, item/style.css).
+    All values come from presentation/viewmodels/item.py; the template only lays them out. -#}
+{% macro recipe_item(entry) -%}
+    <div class="item">
+      <img src="{{ entry.img }}">
+      <p>{{ entry.name_loc | js }}</p>
+    </div>
+{%- endmacro %}
+<!DOCTYPE html>
+<html lang="{{ languageTag }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    {{ css("item/item/style.css") }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{ img }}">
+      <div>
+        <p class="name">{{ nameLoc | js }} <span class="item_id">{{ name | js }}</span></p>
+        {% if cost %}
+        <p class="cost">
+          <img style="height: 20px; width: auto; margin-right: 4px;" src="{{ goldImg }}">
+          {{ cost }}
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if stats %}
+    <div class="stats">
+      <p class="behavior">
+        {{ t("dota2tracker.template.ability") }}
+        {{ stats.behavior }}
+      </p>
+      {% if stats.targetTeam is not none %}
+      <p class="target_team">
+        {{ t("dota2tracker.template.affects") }}
+        {{ stats.targetTeam }}
+      </p>
+      {% endif %}
+      {% if stats.dmgType %}
+      <p class="dmg_type">
+        {{ t("dota2tracker.template.damage_type") }}
+        <span class="{{ stats.dmgType.cls }}">{{ stats.dmgType.text }}</span>
+      </p>
+      {% endif %}
+      {% if stats.dispellable %}
+      <p class="dispellable">
+        {{ t("dota2tracker.template.dispellable") }}
+        <span class="{{ stats.dispellable.cls }}">
+          {{ stats.dispellable.text }}
+        </span>
+      </p>
+      {% endif %}
+      {% if stats.bkbpierce %}
+      <p class="bkbpierce">
+        {{ t("dota2tracker.template.bkbpierce") }}
+        <span class="{{ stats.bkbpierce.cls }}">{{ stats.bkbpierce.text }}</span>
+      </p>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="attrs">
+      {% for attr in attrs %}
+      <p class="attr_item {{ 'positive' if attr.positive else 'negative' }}">
+        {{ attr.sign }}
+        <span class="value">{{ attr.value }}</span>
+        <span class="desc">{{ attr.desc }}</span>
+      </p>
+      {% endfor %}
+    </div>
+
+    {% if abilities %}
+    <div class="abilities">
+      {% for ability in abilities %}
+      <div class="ability {{ ability.type }}">
+        <h1>
+          <p class="name">{{ ability.name }}</p>
+          {% if ability.type == "active" %}
+          <div class="attrs">
+            {% if ability.mana is not none %}
+            <div class="attr">
+              <div class="icon" style="background: linear-gradient(#00A4DB, #007196);"></div>
+              <span class="value">{{ ability.mana }}</span>
+            </div>
+            {% endif %}
+            {% if ability.cooldown is not none %}
+            <div class="attr">
+              <img class="icon" src="{{ cooldownImg }}">
+              <span class="value">{{ ability.cooldown }}</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </h1>
+        <p>{{ ability.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if notes %}
+    <div class="notes">
+      {% for note in notes %}
+      <p class="note">{{ note }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if lore %}
+    <div class="lore">
+      <p>{{ lore }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  {% for block in recipeBlocks %}
+  <div class="recipes">
+    {% if block.upper %}
+    {% set multiple = " multiple" if block.upperMultiple else "" %}
+    <div class="upper{{ multiple }}">
+      {% for target in block.upper %}
+      {{ recipe_item(target) }}
+      {% endfor %}
+    </div>
+    <div class="vline{{ multiple }}">
+      {% for target in block.upper %}
+      <div class="item line"></div>
+      {% endfor %}
+    </div>
+    <div class="hline{{ multiple }}"></div>
+    <div class="vline{{ ' direct' if block.upperMultiple else '' }}"><div class="item line"></div></div>
+    {% endif %}
+
+    <div class="middle">
+      {{ recipe_item(middle) }}
+    </div>
+
+    {% if block.lower is not none %}
+    {% set multiple = " multiple" if block.lowerMultiple else "" %}
+    <div class="vline{{ ' direct' if block.lowerMultiple else '' }}"><div class="item line"></div></div>
+    <div class="hline{{ multiple }}"></div>
+    <div class="vline{{ multiple }}">
+      {% for ingredient in block.lower %}
+      <div class="item line"></div>
+      {% endfor %}
+    </div>
+    <div class="lower{{ multiple }}">
+      {% for ingredient in block.lower %}
+      {{ recipe_item(ingredient) }}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if patches %}
+  <div class="patches">
+    {% for patch in patches %}
+    <div class="patch_group">
+      <p class="patch_number">{{ patch.number | js }} <span class="patch_time">({{ patch.date }})</span>: </p>
+      {% for note in patch.notes %}
+      <p data-indent="{{ note.indent }}">{{ note.note }}</p>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</body>
+</html>

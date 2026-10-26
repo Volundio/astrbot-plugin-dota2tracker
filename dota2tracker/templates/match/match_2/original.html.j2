@@ -1,0 +1,162 @@
+{#- Port of old/src/templates/match/match_2/original.ejs – shared by match_2 and match_2+.
+    Values come from presentation/viewmodels/match.py (build_match_view). -#}
+<nav>
+  <div class="match_id">
+    <p>{{ navLabels.matchId }} {{ match.id | js }}</p>
+    <p class="{{ statusClass }}"></p>
+  </div>
+  <div class="start_time">
+    <p>{{ navLabels.startTime }}</p>
+    <p>{{ startTime }}</p>
+  </div>
+  <div class="duration">
+    <p>{{ navLabels.duration }}</p>
+    <p>{{ match.durationTime }}</p>
+  </div>
+  <div class="region">
+    <p>{{ navLabels.region }}</p>
+    <p>{{ regionStr }}</p>
+  </div>
+  <div class="mode">
+    <p>{{ navLabels.mode }}</p>
+    <p>{{ modeName }}</p>
+  </div>
+
+  <div class="rank" style="{{ 'filter:grayscale(1)' if rankGray else '' }}">
+    <img src="{{ rankMedalImg2 }}" alt="" />
+    <img style="z-index: 1;" src="{{ rankStarImg2 }}" alt="" />
+  </div>
+</nav>
+
+<section class="match_result">
+  <span class="kills radiant">{{ match.radiant.killsCount | js }}</span>
+  <span class="win {{ 'radiant' if radiantWon else 'dire' }}"></span>
+  <span class="kills dire">{{ match.dire.killsCount | js }}</span>
+</section>
+
+<section class="players">
+  {% for team in teams %}
+  <section class="panel {{ team.key }}" style="{{ team.orderStyle }}">
+    <img src="{{ team.logo }}">
+    <p>{{ team.names[0] }}<br>{{ team.names[1] }}</p>
+    {% if team.won %}
+      <p class="win">{{ t('dota2tracker.template.won') }}</p>
+    {% else %}
+      <p></p>
+    {% endif %}
+    <p class="data">{{ t('dota2tracker.template.kill') }}<br>{{ team.data.killsCount | js }}</p>
+    <p class="data">{{ t('dota2tracker.template.total_damage') }}<br>{{ team.data.heroDamage | js }}</p>
+    <p class="data">{{ t('dota2tracker.template.total_gold') }}<br>{{ team.data.networth | js }}</p>
+    <p class="data">{{ t('dota2tracker.template.total_experience') }}<br>{{ team.data.experience | js }}</p>
+  </section>
+  {% endfor %}
+
+  {% for p in players %}
+    <div class="player {{ p.team }}{{ ' bear' if p.isBear else '' }}" style="{{ p.orderStyle }}">
+
+      <div class="hero_avatar row-1{{ p.partyClass }}">
+        <img src="{{ p.heroImg }}" />
+        <p class="level">{{ p.level | js }}</p>
+        <p class="party_line"></p>
+        <p class="party_mark"></p>
+      </div>
+
+      <div class="rank">
+        <img src="{{ p.medalImg }}" class="medal" />
+        <img src="{{ p.starImg }}" class="stars" />
+        <p>{{ p.leaderboard | js if p.leaderboard != "" else "" }}</p>
+      </div>
+
+      <div class="titles">
+        {% for title in p.titles %}
+        <span style="color: {{ title.darkColor }};">{{ title.shortText }}</span>
+        {% endfor %}
+      </div>
+
+      <div class="player_name row-1">
+        <span class="rank">{{ p.rankText }}</span>
+        <span class="name">{{ p.name }}</span>
+      </div>
+
+      <p class="pick">
+        {{ p.orderText }}
+        {{ p.positionText }}
+      </p>
+
+      <p class="networth">
+        <span class="gold">{{ p.formattedNetworth }}</span>
+        ({{ p.score }})
+      </p>
+      <p class="hero_damage">
+        {{ t('dota2tracker.template.hero_damage_') }}{{ p.heroDamage | js }}
+        ({{ p.dmgPct }}%)
+      </p>
+      <p class="damage_received">
+        {{ t('dota2tracker.template.damage_received_') }}{{ p.damageReceived | js }}
+        ({{ p.takenPct }}%)
+      </p>
+      <p class="tower_damage">
+        {{ t('dota2tracker.template.building_damage_') }}{{ p.towerDamage | js }}
+      </p>
+
+      <p class="kda row-1">
+        {{ p.kills | js }}/{{ p.deaths | js }}/{{ p.assists | js }}
+        ({{ p.kdaVal }})
+      </p>
+      <p class="kill_contribution">
+        {{ t('dota2tracker.template.kill_contribution_') }}{{ p.kcPct }}%
+      </p>
+      <p class="stun_duration">
+        {{ t('dota2tracker.template.crowd_control_duration_') }}
+        {{ p.stunVal }}s
+      </p>
+      <p class="heal">
+        {{ t('dota2tracker.template.heal_') }}{{ p.heal | js }}
+      </p>
+
+      <div class="items row-1">
+        <div class="normal">
+          {% for item in p.items %}
+            <div class="item{{ ' recipe' if item and item.isRecipe else '' }}" data-id="{{ item.id | js if item else 0 }}">
+              <img src="{{ item.img if item else '' }}" alt="" />
+              {% if item %}
+                <p class="time">{{ item.time }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+
+        {% if not p.isBear %}
+          <div class="backpack">
+            {% for item in p.backpacks %}
+              <div class="item{{ ' recipe' if item and item.isRecipe else '' }}">
+                <img src="{{ item.img if item else '' }}" alt="" />
+              </div>
+            {% endfor %}
+          </div>
+        {% else %}
+          <img class="bear_icon" src="{{ img('lone_druid_spirit_bear', 'abilities') }}" alt="">
+          <div class="bear">
+            {% for item in p.unitItems %}
+              <div class="item{{ ' recipe' if item and item.isRecipe else '' }}" data-id="{{ item.id | js if item else 0 }}">
+                <img src="{{ item.img if item else '' }}" alt="" />
+                {% if item %}
+                  <p class="time">{{ item.time }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+          <div class="neutral_item"{% if p.unitNeutral.img %} style="background-image: url({{ p.unitNeutral.img }})"{% endif %}></div>
+        {% endif %}
+      </div>
+
+      <div class="neutral_item row-1"{% if p.neutral.img %} style="background-image: url({{ p.neutral.img }})"{% endif %}></div>
+
+      <div class="ahgs row-1">
+        <img src="{{ p.scepterImg }}" alt="" />
+        <img src="{{ p.shardImg }}" alt="" />
+      </div>
+
+    </div>
+  {% endfor %}
+</section>

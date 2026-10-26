@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.subscriptions.title">Subscriptions</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #dde1e6;
+  --text: #1f2328;
+  --muted: #646d78;
+  --accent: #3b6fd8;
+  --accent-text: #ffffff;
+  --ok: #1d7f45;
+  --ok-bg: #e3f4ea;
+  --warn: #93600a;
+  --warn-bg: #fdf2dc;
+  --danger: #c0352b;
+  --danger-bg: #fbe6e4;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --overlay: rgba(15, 23, 42, 0.35);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16181d;
+  --surface: #1f2228;
+  --surface-2: #272b33;
+  --border: #353a44;
+  --text: #e6e8eb;
+  --muted: #9aa3ae;
+  --accent: #6c9cff;
+  --accent-text: #0e1420;
+  --ok: #5fd08f;
+  --ok-bg: #1b3326;
+  --warn: #f0c063;
+  --warn-bg: #3a2f17;
+  --danger: #ff8a80;
+  --danger-bg: #3d1f1d;
+  --shadow: none;
+  --overlay: rgba(0, 0, 0, 0.55);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+h3 { font-size: 14px; margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.page-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 14px; }
+.page-header .spacer { flex: 1; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.stack > * + * { margin-top: 12px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.card-head h2, .card-head h3 { margin: 0; }
+.card-head .spacer { flex: 1; }
+dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 4px 12px; margin: 0; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.stat { background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+.stat .value { font-size: 20px; font-weight: 600; }
+.stat .label { color: var(--muted); font-size: 12px; }
+button, .btn {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.danger { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+button.small { padding: 2px 8px; font-size: 12px; }
+input[type="text"], input[type="search"], select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; }
+.badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.danger { background: var(--danger-bg); color: var(--danger); }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; border: 1px solid transparent; }
+.banner.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.banner.danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.banner.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.state { padding: 24px 12px; text-align: center; color: var(--muted); }
+.state.error { color: var(--danger); }
+.state button { margin-top: 8px; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px;
+  border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.actions { white-space: nowrap; text-align: right; }
+td.actions button + button { margin-left: 6px; }
+ul.plain { list-style: none; margin: 0; padding: 0; }
+ul.plain li + li { margin-top: 6px; }
+/* Narrow layout: tables collapse into labelled rows. */
+@media (max-width: 640px) {
+  body { padding: 10px; }
+  table.responsive thead { display: none; }
+  table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display: block; width: 100%; }
+  table.responsive tr { border-bottom: 1px solid var(--border); padding: 6px 0; }
+  table.responsive tr:last-child { border-bottom: none; }
+  table.responsive td { border: none; padding: 2px 4px; display: flex; gap: 8px; }
+  table.responsive td::before { content: attr(data-label); color: var(--muted); min-width: 96px; flex-shrink: 0; font-size: 12px; }
+  table.responsive td.actions { justify-content: flex-start; text-align: left; }
+  table.responsive td.actions::before { content: none; }
+}
+/* In-page confirm dialog (window.confirm is unavailable in the sandboxed iframe). */
+.overlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+}
+.dialog {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px; width: min(420px, 100%); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.dialog p { margin: 8px 0 16px; overflow-wrap: anywhere; }
+.dialog .toolbar { justify-content: flex-end; }
+.toast-area { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: calc(100% - 32px); }
+.toast { border-radius: 6px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); }
+.toast.ok { border-color: var(--ok); color: var(--ok); }
+.toast.danger { border-color: var(--danger); color: var(--danger); }
+.channel-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.channel-title code { color: var(--muted); }
+.channel-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rename-form { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.rename-form input { width: 12em; }
+.import-result { margin-top: 10px; }
+#filter { width: min(220px, 100%); }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.subscriptions.title">Subscriptions</h1>
+  <span class="spacer"></span>
+  <div class="toolbar">
+    <input type="search" id="filter" data-i18n-placeholder="views.subscriptions.filter" data-i18n-aria="views.subscriptions.filter">
+    <label class="inline small"><input type="checkbox" id="onlySubscribed"> <span data-i18n="views.subscriptions.onlySubscribed"></span></label>
+    <button type="button" id="reload" data-i18n="views.common.reload"></button>
+  </div>
+</header>
+<div id="banners"></div>
+<main id="content" class="stack"></main>
+
+<section class="card" style="margin-top:12px">
+  <h2 data-i18n="views.subscriptions.transfer"></h2>
+  <p class="muted small" data-i18n="views.subscriptions.transferHint"></p>
+  <div class="toolbar">
+    <button type="button" id="export" data-i18n="views.subscriptions.export"></button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <button type="button" id="chooseFile" data-i18n="views.subscriptions.chooseFile"></button>
+    <span id="fileName" class="muted small"></span>
+  </div>
+  <div id="importResult" class="import-result"></div>
+</section>
+
+<script>
+/* ---- shared helpers (identical in every dota2tracker view) ---- */
+const bridge = window.AstrBotPluginView || null;
+
+/** Translate a key relative to the plugin i18n root; `{name}` placeholders are filled from vars. */
+function t(key, vars, fallback) {
+  let text = bridge ? bridge.t(key, "") : "";
+  if (!text) text = fallback !== undefined ? fallback : key;
+  if (vars) {
+    text = text.replace(/\{(\w+)\}/g, (m, name) => (vars[name] === undefined || vars[name] === null ? m : String(vars[name])));
+  }
+  return text;
+}
+
+function hasKey(key) {
+  return Boolean(bridge && bridge.t(key, ""));
+}
+
+function locale() {
+  return (bridge && bridge.getLocale()) || "zh-CN";
+}
+
+/** Apply data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria attributes. */
+function applyI18n(root) {
+  const scope = root || document;
+  scope.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
+  scope.querySelectorAll("[data-i18n-title]").forEach((node) => { node.title = t(node.dataset.i18nTitle); });
+  scope.querySelectorAll("[data-i18n-placeholder]").forEach((node) => { node.placeholder = t(node.dataset.i18nPlaceholder); });
+  scope.querySelectorAll("[data-i18n-aria]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAria)); });
+  document.documentElement.lang = locale();
+}
+
+/** Build DOM safely: strings become text nodes, never HTML. */
+function h(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs || {})) {
+    if (value === undefined || value === null || value === false) continue;
+    if (name === "class") node.className = value;
+    else if (name === "text") node.textContent = value;
+    else if (name.startsWith("on") && typeof value === "function") node.addEventListener(name.slice(2), value);
+    else if (name in node && typeof value !== "string") node[name] = value;
+    else node.setAttribute(name, value === true ? "" : String(value));
+  }
+  append(node, children);
+  return node;
+}
+
+function append(node, children) {
+  for (const child of children.flat(Infinity)) {
+    if (child === undefined || child === null || child === false) continue;
+    node.appendChild(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+function clear(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+  return node;
+}
+
+function setContent(node, ...children) {
+  return append(clear(node), children);
+}
+
+function fmtTime(unixSeconds) {
+  if (unixSeconds === undefined || unixSeconds === null || unixSeconds === 0) return t("views.common.never");
+  const date = new Date(Number(unixSeconds) * 1000);
+  if (Number.isNaN(date.getTime())) return String(unixSeconds);
+  try {
+    return new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "medium" }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+}
+
+function fmtNumber(value) {
+  if (value === undefined || value === null) return "-";
+  try {
+    return new Intl.NumberFormat(locale()).format(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function fmtBytes(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return `${fmtNumber(n)} B`;
+  if (n < 1024 * 1024) return `${fmtNumber(Math.round(n / 102.4) / 10)} KB`;
+  return `${fmtNumber(Math.round(n / 104857.6) / 10)} MB`;
+}
+
+function badge(text, kind) {
+  return h("span", { class: `badge ${kind || ""}`.trim(), text });
+}
+
+function yesNoBadge(value, onKey, offKey, offKind) {
+  return value ? badge(t(onKey || "views.common.enabled"), "ok") : badge(t(offKey || "views.common.disabled"), offKind || "");
+}
+
+/** Map a bridge error (message is a backend error code) to translated text. */
+function errorText(error) {
+  const code = String((error && error.message) || error || "").trim();
+  if (/^[a-z0-9_]+$/.test(code) && hasKey(`views.common.errors.${code}`)) return t(`views.common.errors.${code}`);
+  if (/^invalid_[a-z0-9_]+$/.test(code)) return t("views.common.errors.invalid_param", { name: code.slice(8) });
+  return t("views.common.errors.unknown", { message: code || "?" });
+}
+
+/** Loading / empty / error placeholder. */
+function stateBox(kind, text, retry) {
+  const box = h("div", { class: `state ${kind}`, role: kind === "error" ? "alert" : "status" });
+  if (kind === "loading") box.appendChild(h("span", { class: "spinner", "aria-hidden": "true" }));
+  box.appendChild(document.createTextNode(text || t(`views.common.${kind}`)));
+  if (retry) box.append(h("br"), h("button", { type: "button", onclick: retry, text: t("views.common.retry") }));
+  return box;
+}
+
+let toastArea = null;
+function toast(text, kind) {
+  if (!toastArea) {
+    toastArea = h("div", { class: "toast-area", role: "status", "aria-live": "polite" });
+    document.body.appendChild(toastArea);
+  }
+  const node = h("div", { class: `toast ${kind || ""}`, text });
+  toastArea.appendChild(node);
+  setTimeout(() => node.remove(), kind === "danger" ? 6000 : 3000);
+}
+
+/** In-page confirmation dialog; resolves true/false. */
+function askConfirm(message, { title, confirmText, danger = true } = {}) {
+  return new Promise((resolve) => {
+    const previous = document.activeElement;
+    const close = (result) => {
+      overlay.remove();
+      document.removeEventListener("keydown", onKey);
+      if (previous && previous.focus) previous.focus();
+      resolve(result);
+    };
+    const onKey = (event) => { if (event.key === "Escape") close(false); };
+    const ok = h("button", { type: "button", class: danger ? "danger" : "primary", text: confirmText || t("views.common.confirm"), onclick: () => close(true) });
+    const overlay = h("div", { class: "overlay", onclick: (event) => { if (event.target === overlay) close(false); } },
+      h("div", { class: "dialog", role: "alertdialog", "aria-modal": "true" },
+        h("h3", { text: title || t("views.common.confirmTitle") }),
+        h("p", { text: message }),
+        h("div", { class: "toolbar" },
+          h("button", { type: "button", text: t("views.common.cancel"), onclick: () => close(false) }),
+          ok)));
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    ok.focus();
+  });
+}
+
+/** Disable a button while an async action runs. */
+async function busy(button, action) {
+  if (button) button.disabled = true;
+  try {
+    return await action();
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+/** Start the view: wait for the bridge context, then re-render on every language/theme change. */
+async function boot(onContext) {
+  if (!bridge) {
+    document.body.textContent = "";
+    document.body.appendChild(stateBox("error", "AstrBot plugin view bridge is unavailable. Open this page from the AstrBot dashboard."));
+    return;
+  }
+  await bridge.ready();
+  bridge.onContext(() => {
+    applyI18n();
+    onContext();
+  });
+}
+
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const state = { data: null, error: null, loading: true, filter: "", onlySubscribed: false, editing: null, importFile: null, preview: null };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  state.loading = true;
+  render();
+  try {
+    state.data = await bridge.apiGet("subscriptions");
+    state.error = null;
+  } catch (error) {
+    state.error = error;
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+/** Run a mutation that returns the refreshed subscriptions DTO. */
+async function mutate(endpoint, body, button, successKey) {
+  try {
+    await busy(button, async () => {
+      state.data = await bridge.apiPost(endpoint, body);
+    });
+    state.editing = null;
+    toast(t(successKey), "ok");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  render();
+}
+
+function channelLabel(c) {
+  return c.name || c.channel_id;
+}
+
+function rankText(rank) {
+  if (!rank || !rank.medal) return t("views.subscriptions.rankUnknown");
+  if (rank.medal >= 8) {
+    return rank.leaderboard ? t("views.subscriptions.rankImmortalTop", { n: rank.leaderboard }) : t("views.subscriptions.rankImmortal");
+  }
+  return t("views.subscriptions.rankValue", { medal: t(`views.subscriptions.medals.${rank.medal}`, null, String(rank.medal)), star: rank.star || 0 });
+}
+
+function matches(player, channel) {
+  const q = state.filter.trim().toLowerCase();
+  if (!q) return true;
+  return [player && player.nickname, player && player.steam_id, player && player.user_id, channel && channel.channel_id, channel && channel.name]
+    .some((v) => v !== undefined && v !== null && String(v).toLowerCase().includes(q));
+}
+
+function renameCell(p) {
+  if (state.editing !== p.id) return h("span", { text: p.nickname || "-" });
+  const input = h("input", { type: "text", value: p.nickname, maxlength: "20", "aria-label": t("views.subscriptions.cols.nickname") });
+  const save = h("button", { type: "submit", class: "small primary", text: t("views.common.save") });
+  const form = h("form", { class: "rename-form", onsubmit: (event) => {
+    event.preventDefault();
+    const nickname = input.value.trim();
+    if (!nickname || [...nickname].length > 20) {
+      toast(t("views.common.errors.invalid_nickname"), "danger");
+      return;
+    }
+    mutate("players/rename", { id: p.id, nickname }, save, "views.subscriptions.renamed");
+  } }, input, save, h("button", { type: "button", class: "small", text: t("views.common.cancel"), onclick: () => { state.editing = null; render(); } }));
+  setTimeout(() => input.focus(), 0);
+  return form;
+}
+
+function playerTable(players) {
+  const col = (k) => t(`views.subscriptions.cols.${k}`);
+  return h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+    h("thead", {}, h("tr", {}, ["nickname", "userId", "steamId", "rank", "inGroup", "updatedAt"].map((k) => h("th", { text: col(k) })), h("th", {}))),
+    h("tbody", {}, players.map((p) => h("tr", {},
+      h("td", { "data-label": col("nickname") }, renameCell(p)),
+      h("td", { "data-label": col("userId") }, h("code", { text: p.user_id })),
+      h("td", { "data-label": col("steamId") }, h("code", { text: String(p.steam_id) })),
+      h("td", { "data-label": col("rank"), text: rankText(p.rank) }),
+      h("td", { "data-label": col("inGroup") }, p.inGroup === false ? badge(t("views.subscriptions.left"), "warn") : badge(t("views.subscriptions.member"), "ok")),
+      h("td", { "data-label": col("updatedAt"), class: "small", text: fmtTime(p.updated_at) }),
+      h("td", { class: "actions" },
+        h("button", { type: "button", class: "small", text: t("views.subscriptions.rename"), disabled: state.editing === p.id, onclick: () => { state.editing = p.id; render(); } }),
+        h("button", { type: "button", class: "small danger", text: t("views.subscriptions.unbind"), onclick: async (event) => {
+          const button = event.currentTarget;
+          const ok = await askConfirm(t("views.subscriptions.confirmUnbind", { name: p.nickname || p.user_id, steamId: p.steam_id }), { confirmText: t("views.subscriptions.unbind") });
+          if (ok) mutate("players/unbind", { id: p.id }, button, "views.subscriptions.unbound");
+        } })))))));
+}
+
+function localeSelect(c, locales) {
+  const select = h("select", { "aria-label": t("views.subscriptions.locale") },
+    h("option", { value: "", text: t("views.subscriptions.localeDefault") }),
+    locales.map((l) => h("option", { value: l, text: t(`views.common.locales.${l}`, null, l) })));
+  select.value = c.locale || "";
+  select.addEventListener("change", () => mutate("subscriptions/locale", { id: c.id, locale: select.value || null }, select, "views.subscriptions.localeSaved"));
+  return h("label", { class: "inline small" }, t("views.subscriptions.locale"), select);
+}
+
+function subscribeButton(c) {
+  if (c.subscribed) {
+    return h("button", { type: "button", class: "small danger", text: t("views.subscriptions.unsubscribe"), onclick: async (event) => {
+      const button = event.currentTarget;
+      const ok = await askConfirm(t("views.subscriptions.confirmUnsubscribe", { name: channelLabel(c) }), { confirmText: t("views.subscriptions.unsubscribe") });
+      if (ok) mutate("subscriptions/subscribe", { id: c.id, subscribed: false }, button, "views.subscriptions.unsubscribed");
+    } });
+  }
+  return h("button", { type: "button", class: "small primary", text: t("views.subscriptions.subscribe"), onclick: (event) =>
+    mutate("subscriptions/subscribe", { id: c.id, subscribed: true }, event.currentTarget, "views.subscriptions.subscribed") });
+}
+
+function channelCard(c, locales) {
+  const players = (c.players || []).filter((p) => matches(p, c) || matches(null, c));
+  return h("section", { class: "card" },
+    h("div", { class: "card-head" },
+      h("div", { class: "channel-title" },
+        h("h2", { text: channelLabel(c) }),
+        h("code", { text: c.umo }),
+        c.subscribed ? badge(t("views.subscriptions.subscribedBadge"), "ok") : badge(t("views.subscriptions.notSubscribed")),
+        c.supported ? null : badge(t("views.subscriptions.unsupported", { platform: c.platform_type }), "warn"),
+        c.supported && c.verified === false ? badge(t("views.subscriptions.bestEffort", { platform: c.platform_type })) : null),
+      h("span", { class: "spacer" }),
+      h("div", { class: "channel-controls" }, localeSelect(c, locales), subscribeButton(c))),
+    players.length ? playerTable(players) : stateBox("empty", t("views.subscriptions.noPlayers")));
+}
+
+function render() {
+  const content = $("content");
+  $("reload").disabled = state.loading;
+  if (state.loading && !state.data) return setContent(content, stateBox("loading"));
+  if (!state.data) return setContent(content, stateBox("error", errorText(state.error), load));
+
+  const d = state.data;
+  const locales = d.locales || [];
+  const unsupported = d.channels.some((c) => !c.supported);
+  setContent($("banners"), unsupported ? h("div", { class: "banner warn", role: "alert", text: t("views.common.onebotUnavailable") }) : null);
+
+  const channels = d.channels.filter((c) => (!state.onlySubscribed || c.subscribed) && (matches(null, c) || (c.players || []).some((p) => matches(p, c))));
+  const orphans = (d.orphanPlayers || []).filter((p) => matches(p, null));
+  const total = (d.channels || []).reduce((n, c) => n + (c.players || []).length, 0) + (d.orphanPlayers || []).length;
+  const summary = h("p", { class: "muted small", text: t("views.subscriptions.summary", {
+    channels: fmtNumber(d.channels.length), subscribed: fmtNumber(d.channels.filter((c) => c.subscribed).length), players: fmtNumber(total) }) });
+
+  if (!d.channels.length && !orphans.length) return setContent(content, summary, stateBox("empty", t("views.subscriptions.empty")));
+  setContent(content, summary,
+    channels.length ? channels.map((c) => channelCard(c, locales)) : stateBox("empty", t("views.subscriptions.noMatch")),
+    orphans.length ? h("section", { class: "card" },
+      h("div", { class: "card-head" }, h("h2", { text: t("views.subscriptions.orphans") })),
+      h("p", { class: "muted small", text: t("views.subscriptions.orphansHint") }),
+      playerTable(orphans)) : null);
+}
+
+/* ---------- export / import ---------- */
+function renderImport() {
+  const box = $("importResult");
+  $("fileName").textContent = state.importFile ? `${state.importFile.name} (${fmtBytes(state.importFile.size)})` : "";
+  if (!state.importFile) return setContent(box);
+  if (!state.preview) {
+    const btn = h("button", { type: "button", class: "primary", text: t("views.subscriptions.preview"), onclick: () => previewImport(btn) });
+    return setContent(box, btn);
+  }
+  const r = state.preview;
+  const summary = t(r.dryRun ? "views.subscriptions.previewResult" : "views.subscriptions.importDone", {
+    channelsAdded: r.channelsAdded, channelsSkipped: r.channelsSkipped, playersAdded: r.playersAdded, playersSkipped: r.playersSkipped });
+  if (!r.dryRun) return setContent(box, h("div", { class: "banner ok", text: summary }));
+  const nothing = !r.channelsAdded && !r.playersAdded;
+  const apply = h("button", { type: "button", class: "danger", text: t("views.subscriptions.apply"), disabled: nothing, onclick: () => applyImport(apply) });
+  setContent(box,
+    h("div", { class: "banner warn", text: summary }),
+    h("div", { class: "toolbar" }, apply, h("button", { type: "button", text: t("views.common.cancel"), onclick: resetImport }),
+      nothing ? h("span", { class: "muted small", text: t("views.subscriptions.nothingToImport") }) : null));
+}
+
+function resetImport() {
+  state.importFile = null;
+  state.preview = null;
+  $("importFile").value = "";
+  renderImport();
+}
+
+async function previewImport(button) {
+  try {
+    state.preview = await busy(button, () => bridge.upload("import/preview", state.importFile));
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  renderImport();
+}
+
+async function applyImport(button) {
+  const r = state.preview;
+  const ok = await askConfirm(t("views.subscriptions.confirmImport", { channels: r.channelsAdded, players: r.playersAdded }), { confirmText: t("views.subscriptions.apply") });
+  if (!ok) return;
+  try {
+    state.preview = await busy(button, () => bridge.upload("import/apply", state.importFile));
+    state.importFile = null;
+    $("importFile").value = "";
+    toast(t("views.subscriptions.imported"), "ok");
+    load();
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  renderImport();
+  if (!state.importFile) $("fileName").textContent = "";
+}
+
+$("chooseFile").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", (event) => {
+  const file = event.target.files && event.target.files[0];
+  state.preview = null;
+  state.importFile = null;
+  if (file) {
+    if (!file.name.toLowerCase().endsWith(".json")) toast(t("views.common.errors.import_invalid_extension"), "danger");
+    else if (file.size > MAX_IMPORT_BYTES) toast(t("views.common.errors.import_too_large"), "danger");
+    else state.importFile = file;
+  }
+  renderImport();
+});
+$("export").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+  try {
+    await bridge.download("export", {}, "dota2tracker-bindings.json");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+}));
+$("reload").addEventListener("click", load);
+$("filter").addEventListener("input", (event) => { state.filter = event.target.value; render(); });
+$("onlySubscribed").addEventListener("change", (event) => { state.onlySubscribed = event.target.checked; render(); });
+
+let started = false;
+boot(() => {
+  render();
+  renderImport();
+  if (!started) {
+    started = true;
+    load();
+  }
+});
+</script>
+</body>
+</html>

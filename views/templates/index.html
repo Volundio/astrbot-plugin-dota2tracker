@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.templates.title">Templates</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f0f2f5;
+  --border: #dde1e6;
+  --text: #1f2328;
+  --muted: #646d78;
+  --accent: #3b6fd8;
+  --accent-text: #ffffff;
+  --ok: #1d7f45;
+  --ok-bg: #e3f4ea;
+  --warn: #93600a;
+  --warn-bg: #fdf2dc;
+  --danger: #c0352b;
+  --danger-bg: #fbe6e4;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --overlay: rgba(15, 23, 42, 0.35);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #16181d;
+  --surface: #1f2228;
+  --surface-2: #272b33;
+  --border: #353a44;
+  --text: #e6e8eb;
+  --muted: #9aa3ae;
+  --accent: #6c9cff;
+  --accent-text: #0e1420;
+  --ok: #5fd08f;
+  --ok-bg: #1b3326;
+  --warn: #f0c063;
+  --warn-bg: #3a2f17;
+  --danger: #ff8a80;
+  --danger-bg: #3d1f1d;
+  --shadow: none;
+  --overlay: rgba(0, 0, 0, 0.55);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+h1 { font-size: 20px; margin: 0; }
+h2 { font-size: 15px; margin: 0 0 10px; }
+h3 { font-size: 14px; margin: 0; }
+code, .mono { font-family: var(--mono); font-size: 12.5px; word-break: break-all; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.page-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 14px; }
+.page-header .spacer { flex: 1; }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.stack > * + * { margin-top: 12px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.card-head h2, .card-head h3 { margin: 0; }
+.card-head .spacer { flex: 1; }
+dl.kv { display: grid; grid-template-columns: minmax(90px, auto) 1fr; gap: 4px 12px; margin: 0; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.stat { background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
+.stat .value { font-size: 20px; font-weight: 600; }
+.stat .label { color: var(--muted); font-size: 12px; }
+button, .btn {
+  font: inherit;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+button.danger { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+button.small { padding: 2px 8px; font-size: 12px; }
+input[type="text"], input[type="search"], select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+label.inline { display: inline-flex; align-items: center; gap: 6px; }
+.badge {
+  display: inline-block;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 20px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.badge.ok { background: var(--ok-bg); color: var(--ok); }
+.badge.warn { background: var(--warn-bg); color: var(--warn); }
+.badge.danger { background: var(--danger-bg); color: var(--danger); }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.banner { border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; border: 1px solid transparent; }
+.banner.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.banner.danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.banner.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.state { padding: 24px 12px; text-align: center; color: var(--muted); }
+.state.error { color: var(--danger); }
+.state button { margin-top: 8px; }
+.spinner {
+  display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 6px;
+  border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.actions { white-space: nowrap; text-align: right; }
+td.actions button + button { margin-left: 6px; }
+ul.plain { list-style: none; margin: 0; padding: 0; }
+ul.plain li + li { margin-top: 6px; }
+/* Narrow layout: tables collapse into labelled rows. */
+@media (max-width: 640px) {
+  body { padding: 10px; }
+  table.responsive thead { display: none; }
+  table.responsive, table.responsive tbody, table.responsive tr, table.responsive td { display: block; width: 100%; }
+  table.responsive tr { border-bottom: 1px solid var(--border); padding: 6px 0; }
+  table.responsive tr:last-child { border-bottom: none; }
+  table.responsive td { border: none; padding: 2px 4px; display: flex; gap: 8px; }
+  table.responsive td::before { content: attr(data-label); color: var(--muted); min-width: 96px; flex-shrink: 0; font-size: 12px; }
+  table.responsive td.actions { justify-content: flex-start; text-align: left; }
+  table.responsive td.actions::before { content: none; }
+}
+/* In-page confirm dialog (window.confirm is unavailable in the sandboxed iframe). */
+.overlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+}
+.dialog {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px; width: min(420px, 100%); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+.dialog p { margin: 8px 0 16px; overflow-wrap: anywhere; }
+.dialog .toolbar { justify-content: flex-end; }
+.toast-area { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 60; max-width: calc(100% - 32px); }
+.toast { border-radius: 6px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15); }
+.toast.ok { border-color: var(--ok); color: var(--ok); }
+.toast.danger { border-color: var(--danger); color: var(--danger); }
+.layout { display: grid; gap: 12px; grid-template-columns: minmax(240px, 320px) 1fr; align-items: start; }
+@media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+.form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.form-row select { width: 100%; }
+.preview-box { min-height: 200px; background: var(--surface-2); border-radius: 6px; padding: 8px; overflow: auto; text-align: center; }
+.preview-box img { max-width: 100%; height: auto; display: inline-block; background: #fff; }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.templates.title">Templates</h1>
+  <span class="spacer"></span>
+  <button type="button" id="reload" data-i18n="views.common.reload"></button>
+</header>
+<main id="content"></main>
+
+<script>
+/* ---- shared helpers (identical in every dota2tracker view) ---- */
+const bridge = window.AstrBotPluginView || null;
+
+/** Translate a key relative to the plugin i18n root; `{name}` placeholders are filled from vars. */
+function t(key, vars, fallback) {
+  let text = bridge ? bridge.t(key, "") : "";
+  if (!text) text = fallback !== undefined ? fallback : key;
+  if (vars) {
+    text = text.replace(/\{(\w+)\}/g, (m, name) => (vars[name] === undefined || vars[name] === null ? m : String(vars[name])));
+  }
+  return text;
+}
+
+function hasKey(key) {
+  return Boolean(bridge && bridge.t(key, ""));
+}
+
+function locale() {
+  return (bridge && bridge.getLocale()) || "zh-CN";
+}
+
+/** Apply data-i18n / data-i18n-title / data-i18n-placeholder / data-i18n-aria attributes. */
+function applyI18n(root) {
+  const scope = root || document;
+  scope.querySelectorAll("[data-i18n]").forEach((node) => { node.textContent = t(node.dataset.i18n); });
+  scope.querySelectorAll("[data-i18n-title]").forEach((node) => { node.title = t(node.dataset.i18nTitle); });
+  scope.querySelectorAll("[data-i18n-placeholder]").forEach((node) => { node.placeholder = t(node.dataset.i18nPlaceholder); });
+  scope.querySelectorAll("[data-i18n-aria]").forEach((node) => { node.setAttribute("aria-label", t(node.dataset.i18nAria)); });
+  document.documentElement.lang = locale();
+}
+
+/** Build DOM safely: strings become text nodes, never HTML. */
+function h(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [name, value] of Object.entries(attrs || {})) {
+    if (value === undefined || value === null || value === false) continue;
+    if (name === "class") node.className = value;
+    else if (name === "text") node.textContent = value;
+    else if (name.startsWith("on") && typeof value === "function") node.addEventListener(name.slice(2), value);
+    else if (name in node && typeof value !== "string") node[name] = value;
+    else node.setAttribute(name, value === true ? "" : String(value));
+  }
+  append(node, children);
+  return node;
+}
+
+function append(node, children) {
+  for (const child of children.flat(Infinity)) {
+    if (child === undefined || child === null || child === false) continue;
+    node.appendChild(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+function clear(node) {
+  while (node.firstChild) node.removeChild(node.firstChild);
+  return node;
+}
+
+function setContent(node, ...children) {
+  return append(clear(node), children);
+}
+
+function fmtTime(unixSeconds) {
+  if (unixSeconds === undefined || unixSeconds === null || unixSeconds === 0) return t("views.common.never");
+  const date = new Date(Number(unixSeconds) * 1000);
+  if (Number.isNaN(date.getTime())) return String(unixSeconds);
+  try {
+    return new Intl.DateTimeFormat(locale(), { dateStyle: "medium", timeStyle: "medium" }).format(date);
+  } catch {
+    return date.toLocaleString();
+  }
+}
+
+function fmtNumber(value) {
+  if (value === undefined || value === null) return "-";
+  try {
+    return new Intl.NumberFormat(locale()).format(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function fmtBytes(bytes) {
+  const n = Number(bytes) || 0;
+  if (n < 1024) return `${fmtNumber(n)} B`;
+  if (n < 1024 * 1024) return `${fmtNumber(Math.round(n / 102.4) / 10)} KB`;
+  return `${fmtNumber(Math.round(n / 104857.6) / 10)} MB`;
+}
+
+function badge(text, kind) {
+  return h("span", { class: `badge ${kind || ""}`.trim(), text });
+}
+
+function yesNoBadge(value, onKey, offKey, offKind) {
+  return value ? badge(t(onKey || "views.common.enabled"), "ok") : badge(t(offKey || "views.common.disabled"), offKind || "");
+}
+
+/** Map a bridge error (message is a backend error code) to translated text. */
+function errorText(error) {
+  const code = String((error && error.message) || error || "").trim();
+  if (/^[a-z0-9_]+$/.test(code) && hasKey(`views.common.errors.${code}`)) return t(`views.common.errors.${code}`);
+  if (/^invalid_[a-z0-9_]+$/.test(code)) return t("views.common.errors.invalid_param", { name: code.slice(8) });
+  return t("views.common.errors.unknown", { message: code || "?" });
+}
+
+/** Loading / empty / error placeholder. */
+function stateBox(kind, text, retry) {
+  const box = h("div", { class: `state ${kind}`, role: kind === "error" ? "alert" : "status" });
+  if (kind === "loading") box.appendChild(h("span", { class: "spinner", "aria-hidden": "true" }));
+  box.appendChild(document.createTextNode(text || t(`views.common.${kind}`)));
+  if (retry) box.append(h("br"), h("button", { type: "button", onclick: retry, text: t("views.common.retry") }));
+  return box;
+}
+
+let toastArea = null;
+function toast(text, kind) {
+  if (!toastArea) {
+    toastArea = h("div", { class: "toast-area", role: "status", "aria-live": "polite" });
+    document.body.appendChild(toastArea);
+  }
+  const node = h("div", { class: `toast ${kind || ""}`, text });
+  toastArea.appendChild(node);
+  setTimeout(() => node.remove(), kind === "danger" ? 6000 : 3000);
+}
+
+/** In-page confirmation dialog; resolves true/false. */
+function askConfirm(message, { title, confirmText, danger = true } = {}) {
+  return new Promise((resolve) => {
+    const previous = document.activeElement;
+    const close = (result) => {
+      overlay.remove();
+      document.removeEventListener("keydown", onKey);
+      if (previous && previous.focus) previous.focus();
+      resolve(result);
+    };
+    const onKey = (event) => { if (event.key === "Escape") close(false); };
+    const ok = h("button", { type: "button", class: danger ? "danger" : "primary", text: confirmText || t("views.common.confirm"), onclick: () => close(true) });
+    const overlay = h("div", { class: "overlay", onclick: (event) => { if (event.target === overlay) close(false); } },
+      h("div", { class: "dialog", role: "alertdialog", "aria-modal": "true" },
+        h("h3", { text: title || t("views.common.confirmTitle") }),
+        h("p", { text: message }),
+        h("div", { class: "toolbar" },
+          h("button", { type: "button", text: t("views.common.cancel"), onclick: () => close(false) }),
+          ok)));
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+    ok.focus();
+  });
+}
+
+/** Disable a button while an async action runs. */
+async function busy(button, action) {
+  if (button) button.disabled = true;
+  try {
+    return await action();
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+/** Start the view: wait for the bridge context, then re-render on every language/theme change. */
+async function boot(onContext) {
+  if (!bridge) {
+    document.body.textContent = "";
+    document.body.appendChild(stateBox("error", "AstrBot plugin view bridge is unavailable. Open this page from the AstrBot dashboard."));
+    return;
+  }
+  await bridge.ready();
+  bridge.onContext(() => {
+    applyI18n();
+    onContext();
+  });
+}
+
+const state = { data: null, error: null, loading: true, template: "", locale: "", variant: "", preview: null, previewError: null, rendering: false };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  state.loading = true;
+  render();
+  try {
+    state.data = await bridge.apiGet("templates");
+    state.error = null;
+    const names = state.data.templates.map((x) => x.name);
+    if (!names.includes(state.template)) state.template = names[0] || "";
+    if (!state.data.locales.includes(state.locale)) state.locale = state.data.locales.includes(locale()) ? locale() : state.data.locales[0] || "";
+    fixVariant();
+  } catch (error) {
+    state.error = error;
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+function current() {
+  return (state.data && state.data.templates.find((x) => x.name === state.template)) || null;
+}
+
+function fixVariant() {
+  const tpl = current();
+  if (!tpl || !tpl.variants.includes(state.variant)) state.variant = tpl ? tpl.variants[0] || "" : "";
+}
+
+async function renderPreview(button) {
+  state.rendering = true;
+  state.previewError = null;
+  renderPreviewBox();
+  try {
+    state.preview = await busy(button, () => bridge.apiPost("templates/preview", { template: state.template, locale: state.locale, variant: state.variant }));
+  } catch (error) {
+    state.preview = null;
+    state.previewError = error;
+  } finally {
+    state.rendering = false;
+    renderPreviewBox();
+  }
+}
+
+function variantLabel(v) {
+  return v ? t(`views.templates.variants.${v}`, null, v) : t("views.templates.variants.default");
+}
+
+function select(labelKey, value, options, onChange) {
+  const node = h("select", {}, options.map(([v, label]) => h("option", { value: v, text: label })));
+  node.value = value;
+  node.addEventListener("change", () => onChange(node.value));
+  return h("label", { class: "form-row" }, h("span", { class: "small muted", text: t(labelKey) }), node);
+}
+
+function controlsCard() {
+  const d = state.data;
+  const tpl = current();
+  const btn = h("button", { type: "button", class: "primary", text: t("views.templates.render"), disabled: !tpl, onclick: () => renderPreview(btn) });
+  return h("section", { class: "card" },
+    h("h2", { text: t("views.templates.previewSettings") }),
+    select("views.templates.template", state.template,
+      d.templates.map((x) => [x.name, `${t(`views.templates.kinds.${x.kind}`, null, x.kind)} / ${x.name}`]),
+      (v) => { state.template = v; fixVariant(); state.preview = null; render(); }),
+    select("views.templates.locale", state.locale, d.locales.map((l) => [l, t(`views.common.locales.${l}`, null, l)]), (v) => { state.locale = v; }),
+    tpl && tpl.variants.length > 1
+      ? select("views.templates.variant", state.variant, tpl.variants.map((v) => [v, variantLabel(v)]), (v) => { state.variant = v; })
+      : null,
+    h("p", { class: "muted small", text: t("views.templates.fixtureHint") }),
+    btn);
+}
+
+function renderPreviewBox() {
+  const box = $("previewBox");
+  const meta = $("previewMeta");
+  if (!box) return;
+  meta.textContent = "";
+  if (state.rendering) return setContent(box, stateBox("loading", t("views.templates.rendering")));
+  if (state.previewError) return setContent(box, stateBox("error", errorText(state.previewError)));
+  const p = state.preview;
+  if (!p) return setContent(box, stateBox("empty", t("views.templates.noPreview")));
+  // Only accept inline image data URLs returned by our backend.
+  if (typeof p.image !== "string" || !/^data:image\/(png|jpeg|webp);base64,/.test(p.image)) {
+    return setContent(box, stateBox("error", t("views.common.errors.unknown", { message: "invalid image" })));
+  }
+  meta.textContent = `${p.mime} · ${fmtBytes(p.bytes)}`;
+  setContent(box, h("img", { src: p.image, alt: t("views.templates.previewAlt", { name: state.template }) }));
+}
+
+function rendererCard() {
+  const r = state.data.renderer || {};
+  return h("section", { class: "card" },
+    h("div", { class: "card-head" }, h("h2", { text: t("views.templates.renderer") })),
+    h("p", { class: "muted small", text: t("views.templates.systemFonts") }),
+    h("dl", { class: "kv" },
+      h("dt", { text: t("views.templates.renderStats") }),
+      h("dd", { text: t("views.templates.renderStatsValue", { renders: fmtNumber(r.renders || 0), failures: fmtNumber(r.failures || 0) }) }),
+      r.last_error ? [h("dt", { text: t("views.overview.lastRenderError") }), h("dd", {}, h("code", { text: r.last_error }))] : null));
+}
+
+function render() {
+  const content = $("content");
+  $("reload").disabled = state.loading;
+  if (state.loading && !state.data) return setContent(content, stateBox("loading"));
+  if (!state.data) return setContent(content, stateBox("error", errorText(state.error), load));
+  if (!state.data.templates.length) return setContent(content, stateBox("empty", t("views.templates.empty")));
+  setContent(content,
+    h("div", { class: "layout" },
+      h("div", { class: "stack" }, controlsCard(), rendererCard()),
+      h("section", { class: "card" },
+        h("div", { class: "card-head" }, h("h2", { text: t("views.templates.preview") }), h("span", { class: "spacer" }), h("span", { id: "previewMeta", class: "muted small" })),
+        h("div", { id: "previewBox", class: "preview-box" }))));
+  renderPreviewBox();
+}
+
+$("reload").addEventListener("click", load);
+
+let started = false;
+boot(() => {
+  render();
+  if (!started) {
+    started = true;
+    load();
+  }
+});
+</script>
+</body>
+</html>

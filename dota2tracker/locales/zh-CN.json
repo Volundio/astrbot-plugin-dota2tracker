@@ -1,0 +1,548 @@
+{
+  "dota2tracker": {
+    "heroes_nicknames": {
+      "0": "请严格遵循 \"\", \"\" 格式填写（如下方默认数据，注意是英文半角符号），如果格式有误将仅使用英雄默认名称。可以不包含英雄默认名称。",
+      "1": "\"敌法师\", \"敌法\", \"AM\"",
+      "2": "\"斧王\"",
+      "3": "\"祸乱之源\", \"祸乱\", \"水桶腰\"",
+      "4": "\"血魔\"",
+      "5": "\"水晶室女\", \"冰女\", \"CM\"",
+      "6": "\"卓尔游侠\", \"小黑\"",
+      "7": "\"撼地者\", \"小牛\", \"牛头\"",
+      "8": "\"主宰\", \"剑圣\", \"jugg\", \"奶棒人\"",
+      "9": "\"米拉娜\", \"白虎\", \"pom\"",
+      "10": "\"变体精灵\", \"水人\"",
+      "11": "\"影魔\", \"影魔王\", \"SF\", \"影儿魔儿\"",
+      "12": "\"幻影长矛手\", \"PL\"",
+      "13": "\"帕克\"",
+      "14": "\"帕吉\", \"屠夫\", \"扒鸡\", \"啪唧\"",
+      "15": "\"雷泽\", \"电魂\", \"电棍\"",
+      "16": "\"沙王\", \"SK\"",
+      "17": "\"风暴之灵\", \"蓝猫\"",
+      "18": "\"斯温\", \"流浪剑客\", \"流浪\"",
+      "19": "\"小小\"",
+      "20": "\"复仇之魂\", \"复仇\", \"VS\"",
+      "21": "\"风行者\", \"风行\", \"WR\"",
+      "22": "\"宙斯\"",
+      "23": "\"昆卡\", \"船长\"",
+      "25": "\"莉娜\", \"火女\"",
+      "26": "\"莱恩\", \"恶魔巫师\", \"Lion\"",
+      "27": "\"暗影萨满\", \"小Y\", \"小歪\"",
+      "28": "\"斯拉达\", \"大鱼\", \"大鱼人\"",
+      "29": "\"潮汐猎人\", \"潮汐\", \"西瓜皮\"",
+      "30": "\"巫医\"",
+      "31": "\"巫妖\"",
+      "32": "\"力丸\", \"隐形刺客\", \"隐刺\"",
+      "33": "\"谜团\"",
+      "34": "\"修补匠\", \"TK\", \"Tinker\"",
+      "35": "\"狙击手\", \"矮人火枪手\", \"火枪\", \"传说哥\"",
+      "36": "\"瘟疫法师\", \"死灵法\", \"NEC\"",
+      "37": "\"术士\", \"Warlock\"",
+      "38": "\"兽王\"",
+      "39": "\"痛苦女王\", \"女王\", \"QOP\"",
+      "40": "\"剧毒术士\", \"剧毒\"",
+      "41": "\"虚空假面\", \"虚空\", \"JB脸\"",
+      "42": "\"冥魂大帝\", \"骷髅王\"",
+      "43": "\"死亡先知\", \"DP\"",
+      "44": "\"幻影刺客\", \"幻刺\", \"PA\"",
+      "45": "\"帕格纳\", \"骨法\", \"湮灭法师\"",
+      "46": "\"圣堂刺客\", \"圣堂\", \"TA\"",
+      "47": "\"冥界亚龙\", \"毒龙\", \"Viper\"",
+      "48": "\"露娜\", \"月骑\", \"Luna\"",
+      "49": "\"龙骑士\", \"龙骑\"",
+      "50": "\"戴泽\", \"暗影牧师\", \"暗牧\"",
+      "51": "\"发条技师\", \"发条\"",
+      "52": "\"拉席克\", \"老鹿\"",
+      "53": "\"先知\"",
+      "54": "\"噬魂鬼\", \"小狗\"",
+      "55": "\"黑暗贤者\", \"黑贤\"",
+      "56": "\"克林克兹\", \"小骷髅\"",
+      "57": "\"全能骑士\", \"全能\"",
+      "58": "\"魅惑魔女\", \"小鹿\"",
+      "59": "\"哈斯卡\", \"神灵\", \"神灵武士\"",
+      "60": "\"暗夜魔王\", \"夜魔\"",
+      "61": "\"育母蜘蛛\", \"蜘蛛\"",
+      "62": "\"赏金猎人\", \"赏金\"",
+      "63": "\"编织者\", \"蚂蚁\"",
+      "64": "\"杰奇洛\", \"双头龙\"",
+      "65": "\"蝙蝠骑士\", \"蝙蝠\"",
+      "66": "\"陈\", \"老陈\"",
+      "67": "\"幽鬼\", \"SPE\", \"UG\"",
+      "68": "\"远古冰魄\", \"冰魂\"",
+      "69": "\"末日使者\", \"末日\", \"Doom\"",
+      "70": "\"熊战士\", \"拍拍\", \"拍拍熊\"",
+      "71": "\"裂魂人\", \"白牛\", \"sb\"",
+      "72": "\"矮人直升机\", \"飞机\"",
+      "73": "\"炼金术士\", \"炼金\"",
+      "74": "\"祈求者\", \"卡尔\"",
+      "75": "\"沉默术士\", \"沉默\"",
+      "76": "\"殁境神蚀者\", \"黑鸟\"",
+      "77": "\"狼人\"",
+      "78": "\"酒仙\", \"熊猫\", \"熊猫酒仙\"",
+      "79": "\"暗影恶魔\", \"毒狗\"",
+      "80": "\"德鲁伊\", \"熊德\"",
+      "81": "\"混沌骑士\", \"混沌\", \"CK\"",
+      "82": "\"米波\"",
+      "83": "\"树精卫士\", \"大树\", \"树精\"",
+      "84": "\"食人魔魔法师\", \"蓝胖\"",
+      "85": "\"不朽尸王\", \"尸王\"",
+      "86": "\"拉比克\"",
+      "87": "\"干扰者\", \"萨尔\"",
+      "88": "\"司夜刺客\", \"小强\"",
+      "89": "\"娜迦海妖\", \"小娜迦\"",
+      "90": "\"光之守卫\", \"光法\"",
+      "91": "\"艾欧\", \"小精灵\", \"精灵\", \"IO\"",
+      "92": "\"维萨吉\", \"死灵龙\", \"死灵飞龙\"",
+      "93": "\"斯拉克\", \"小鱼\", \"小鱼人\"",
+      "94": "\"美杜莎\", \"一姐\", \"美杜莎\"",
+      "95": "\"巨魔战将\", \"巨魔\", \"巨馍蘸酱\"",
+      "96": "\"半人马战行者\", \"人马\", \"半人马\"",
+      "97": "\"马格纳斯\", \"猛犸\"",
+      "98": "\"伐木机\", \"花母鸡\"",
+      "99": "\"钢背兽\", \"钢背\"",
+      "100": "\"巨牙海民\", \"海民\"",
+      "101": "\"天怒法师\", \"天怒\"",
+      "102": "\"亚巴顿\"",
+      "103": "\"上古巨神\", \"大牛\"",
+      "104": "\"军团指挥官\", \"军团\"",
+      "105": "\"工程师\", \"炸弹\", \"炸弹人\"",
+      "106": "\"灰烬之灵\", \"火猫\"",
+      "107": "\"大地之灵\", \"土猫\"",
+      "108": "\"孽主\", \"大屁股\"",
+      "109": "\"恐怖利刃\", \"TB\"",
+      "110": "\"凤凰\", \"烧鸡\"",
+      "111": "\"神谕者\", \"神谕\"",
+      "112": "\"寒冬飞龙\", \"冰龙\"",
+      "113": "\"天穹守望者\", \"电狗\"",
+      "114": "\"齐天大圣\", \"大圣\"",
+      "119": "\"邪影芳灵\", \"小仙女\", \"花仙子\"",
+      "120": "\"石鳞剑士\", \"滚滚\"",
+      "121": "\"天涯墨客\", \"墨客\"",
+      "123": "\"森海飞霞\", \"松鼠\", \"小松鼠\", \"小松许\"",
+      "126": "\"虚无之灵\", \"紫猫\"",
+      "128": "\"电炎绝手\", \"老奶奶\"",
+      "129": "\"玛尔斯\"",
+      "131": "\"百戏大王\"",
+      "135": "\"破晓辰星\", \"大锤\"",
+      "136": "\"玛西\"",
+      "137": "\"獸\", \"畜\"",
+      "138": "\"琼英碧灵\", \"奶绿\", \"绿奶奶\"",
+      "145": "\"凯\", \"鸟人\"",
+      "155": "\"朗戈\""
+    },
+    "broadcast": {
+      "WIN_NEGATIVE": "\"侥幸赢得了比赛\", \"走狗屎运赢得了比赛\", \"躺赢了比赛\", \"打团都没来, 队友4V5赢得了比赛\"",
+      "WIN_POSITIVE": "\"带领团队走向了胜利\", \"暴打对面后赢得了胜利\", \" CARRY全场赢得了胜利\", \"把对面当猪宰了, 赢得了胜利\", \"又赢了, 这游戏就是这么枯燥, 且乏味\", \"直接进行一个比赛的赢\"",
+      "LOSE_NEGATIVE": "\"被人按在地上摩擦, 输掉了这场比赛\", \"悲惨地输掉了比赛\", \"头都被打歪了, 心态爆炸地输掉了比赛\", \"捕鱼被鱼吃了, 输掉了比赛\", \"打的是个几把\", \"直接进行一个比赛的输\"",
+      "LOSE_POSITIVE": "\"无力回天输掉了比赛\", \"尽力了, 但还是输了比赛\", \"背靠世界树, 虽败犹荣\", \"带不动队友, 输了比赛\", \"又输了, 很难受, 宁愿输的是我\"",
+      "message": "{name}的{hero_name}{comment}。\nKDA：{kda}，GPM/XPM：{gpm_xpm}，补刀/反补：{lh_dn}，伤害/塔伤：{damage}，参战/参葬率：{kc_dc}",
+      "rank_changed": "群友 {name} 段位变动：{prev.medal}{prev.star} → {curr.medal}{curr.star}"
+    },
+    "logger": {
+      "fetch_guilds_failed": "获取群组信息失败，将继续后续步骤。",
+      "match_tracked": "追踪到最新比赛 {match.id} 来自{#each messageToLogger as item}群组 {item.platform}:{item.guildId} 的玩家 [{#each item.players as player}{player.nickname}({player.steamId}){#if player !== item.players[item.players.length - 1]}、{/if}{/each}]{#if item !== messageToLogger[messageToLogger.length - 1]}、{/if}{/each}。",
+      "parse_request_sent": "比赛 {matchId} 解析请求已成功发送至STRATZ服务器。",
+      "parse_request_failed": "比赛 {matchId} 解析请求发送失败。",
+      "match_parsed": "比赛 {matchId} 已{#if odParsed}由 OpenDota {/if}解析，生成图片并发布于{#each guilds as guild}{guild.platform}:{guild.guildId}{#if guild !== guilds[guilds.length - 1]}、{/if}{/each}。",
+      "match_unparsed": "比赛 {matchId} 超过等待时间[{timeout}分钟]仍未解析，生成图片并发布于{#each guilds as guild}{guild.platform}:{guild.guildId}{#if guild !== guilds[guilds.length - 1]}、{/if}{/each}。",
+      "waiting_for_parse": "比赛 {matchId} 尚未解析完成，已等待{time}分钟。",
+      "report_sent": "发布{title}于{platform}:{guildId}。",
+      "rank_sent": "向{platform}:{guildId}发布{player.nickName}({player.steamId})的段位变动信息。",
+      "ejs_error": "EJS模板渲染错误：{error}",
+      "cron_not_enabled": "未启用cron服务，无法运行战报追踪等定时任务。",
+      "stratz_token_banned": "Stratz API 请求被拒绝(403)，若频繁发生很有可能意味着您的Token或IP因异常使用被临时限制访问。有关此报错请见文档：http://sjtdev.github.io/koishi-plugin-dota2tracker/api-403.html",
+      "opendota_token_banned": "OpenDota API 请求被拒绝(403)，请注意访问次数是否超限。",
+      "stratz_api_query_error": "Stratz API 返回了有效数据，但同时也返回了查询报错。错误信息: {cause}",
+      "opendota_parse_request_sent": "比赛 {matchId} 解析请求已成功发送至 OpenDota 服务器。",
+      "opendota_parse_request_failed": "比赛 {matchId} 解析请求向 OpenDota 服务器发送失败。",
+      "font_loaded": "字体目录发生变化: {filename} ({eventType})，重新加载字体列表..."
+    },
+    "time": {
+      "years_months_ago": "{years}年{months}个月前",
+      "years_ago": "{years}年前"
+    },
+    "template": {
+      "radiant": "天辉",
+      "dire": "夜魇",
+      "won": "获胜",
+      "lost": "失败",
+      "match_id_": "比赛编号：{0}",
+      "game_mode_": "模式：{0}",
+      "start_time_": "起始时间：{0}",
+      "end_time_": "结束时间：{0}",
+      "pick_order": "第{0}手",
+      "random": "随机",
+      "hero_damage_": "英雄伤害：{0}",
+      "building_damage_": "建筑伤害：{0}",
+      "damage_received_": "受到伤害：{0}",
+      "lasthit_": "补刀：{0}",
+      "deny_": "反补：{0}",
+      "lh/dn_": "补刀：{0}/{1}",
+      "GPM": "GPM",
+      "XPM": "XPM",
+      "heal_": "治疗量：{0}",
+      "crowd_control_duration_": "控制时间：{0}",
+      "GPM/XPM_": "GPM/XPM：{0}",
+      "lane": "对线",
+      "lane_": "对线：",
+      "lane_advantage": "对线优势",
+      "lane_disadvantage": "对线劣势",
+      "lane_stomp": "对线碾压",
+      "lane_stomped": "对线被碾",
+      "lane_tie": "对线平手",
+      "lane_jungle": "野区霸主",
+      "analysis_successful": "录像分析成功",
+      "analysis_incomplete": "分析结果不完整",
+      "analysis_by_opendota": "数据解析自 OpenDota",
+      "kill": "击杀",
+      "kill_contribution_": "参战率：{0}",
+      "position": "位置",
+      "position_": "位置：",
+      "position_1": "优势路",
+      "position_2": "中路",
+      "position_3": "烈士路",
+      "position_4": "采灵芝",
+      "position_5": "工具人",
+      "position_undefined": "?",
+      "total_damage": "总伤害",
+      "total_gold": "总经济",
+      "total_experience": "总经验",
+      "radiant_won": "天辉获胜",
+      "dire_won": "夜魇获胜",
+      "duration_": "持续时间：{0}",
+      "region_": "地区：{0}",
+      "match_count_": "场次：",
+      "last25matches_": "最近25场：",
+      "winrate_": "胜率：",
+      "imp_": "表现：",
+      "lane_advantage_rate_": "线优率：",
+      "top10_": "全期场次前十的英雄：",
+      "hero": "英雄",
+      "all_matches_": "全期场次：",
+      "match_count": "场次",
+      "winrate": "胜率",
+      "imp": "表现",
+      "win_count": "胜场",
+      "lose_count": "败场",
+      "recently_heroes": "近期使用场次大于1的英雄：",
+      "recently_positions": "近25场各个位置的表现：",
+      "winning_streak": "连胜",
+      "losing_streak": "连败",
+      "id": "ID",
+      "mode": "模式",
+      "kda_kc": "KDA(参战率)",
+      "time": "时间",
+      "duration": "时长",
+      "rank": "段位",
+      "un_parsed": "（未解析）",
+      "combined_win_loss_summary": "组合胜负情况：",
+      "yesterdays_summary": "昨日总结",
+      "last_weeks_summary": "上周总结",
+      "report_won": "胜",
+      "report_lost": "负",
+      "report_winrate": "胜率",
+      "anonymous_player_1": "数据未公开",
+      "anonymous_player_2": "背景仅供展示目的，不属于{player}的数据。",
+      "rank_fun_up_message": "热烈祝贺群友 AVATAR_PLACEHOLDER{name} 在天梯中再获进步，<br/>由 PREV_PLACEHOLDER 升为 CURR_PLACEHOLDER，再接再厉，再创辉煌！",
+      "rank_fun_down_message": "AVATAR_PLACEHOLDER<br/>寄",
+      "titles": {
+        "MVP": "MVP-#FFA500",
+        "Soul": "魂-#66CCFF",
+        "Rich": "富-#FFD700",
+        "Wise": "睿-#8888FF",
+        "Controller": "控-#FF00FF",
+        "Nuker": "爆-#CC0088",
+        "Breaker": "破-#DD0000",
+        "Ghost": "鬼-#CCCCCC",
+        "Utility": "辅-#20B2AA",
+        "Assister": "助-#006400",
+        "Demolisher": "拆-#FEDCBA",
+        "Healer": "奶-#00FF00",
+        "Tank": "耐-#84A1C7",
+        "Idle": "摸-#DDDDDD"
+      },
+      "situation": "局势",
+      "networth": "经济",
+      "experience": "经验",
+      "OUTCOME_MAP": {
+        "RADIANT_VICTORY": "天辉优势",
+        "RADIANT_STOMP": "天辉碾压",
+        "DIRE_VICTORY": "夜魇优势",
+        "DIRE_STOMP": "夜魇碾压",
+        "TIE": "势均力敌"
+      },
+      "lane_top": "上路",
+      "lane_mid": "中路",
+      "lane_bottom": "下路",
+      "empty_extra_info": "比赛未解析或信息缺失，无法展示更多数据。",
+      "opendota": {
+        "networth_unavailable": "经济走势图不可用",
+        "networth_unavailable_reason": "数据源 OpenDota 未提供每分钟经济数据。",
+        "lane_outcome_tip": "（数据基于累计获得金币而非经济，仅供参考）",
+        "gold_t": "累计获得金币"
+      },
+      "report": {
+        "daily": {
+          "plugin_name": "AstrBot Dota 2 Plugin",
+          "title": "每日战报",
+          "meta": {
+            "date_format": "yyyy年L月d日 cccc",
+            "summary": "战报生成于 {0}。",
+            "footer_format": "ID: #{0} • 服务器: {1}"
+          },
+          "stats": {
+            "matches": "总场次",
+            "win_rate": "胜率",
+            "kills": "总击杀",
+            "duration": "总时长",
+            "avg_time": "平均时长",
+            "matches_subtext": "{0}胜 - {1}负",
+            "vs_yesterday": "较昨日",
+            "kills_avg": "场均 {0}"
+          },
+          "spotlight": {
+            "mvp_title": "全 场 最 佳",
+            "lvp_title": "头 号 战 犯",
+            "utility_title": "无 私 奉 献",
+            "healer_title": "救 死 扶 伤",
+            "demolisher_title": "拆 迁 队 长",
+            "default_title": "平 平 无 奇",
+            "score_label": "综合评分",
+            "utility_score_label": "辅助贡献",
+            "healer_score_label": "治疗量",
+            "demolisher_score_label": "建筑伤害",
+            "default_label": "当日无趣味数据"
+          },
+          "squad": {
+            "title": "表现排行",
+            "subtitle": "基于 评分 排序",
+            "header": {
+              "rank": "排名",
+              "player_info": "玩家",
+              "hero_pool": "英雄池（基于胜场）",
+              "kda": "KDA",
+              "score": "评分",
+              "impact": "贡献 / 经济"
+            },
+            "impact": {
+              "dmg": "伤害",
+              "gold": "经济"
+            }
+          },
+          "footer": {
+            "generated_by": "Generated by Koishi Bot"
+          }
+        }
+      },
+      "generated_at": "生成于"
+    },
+    "platform_unsupported": "Dota2 Tracker 暂不支持当前平台。"
+  },
+  "commands": {
+    "dota2tracker": {
+      "description": "dota2tracker的一系列指令，可以使用dota2tracker -h查看所有可用指令，或者使用`dota2tracker.help`（默认别名`DOTA2帮助`）查看所有指令详细说明表。",
+      "subscribe": {
+        "description": "[订阅本群]",
+        "usage": "订阅后还需玩家在本群绑定SteamID，BOT将订阅本群中已绑定玩家的新比赛数据，在STRATZ比赛解析完成后将比赛数据生成为图片战报发布至本群中。",
+        "examples": "订阅本群",
+        "messages": {
+          "subscribed": "本群已订阅，无需重复订阅。",
+          "subscribe_success": "订阅成功。"
+        }
+      },
+      "unsubscribe": {
+        "description": "[取消订阅] 取消订阅本群。",
+        "usage": "取消订阅本群。",
+        "examples": "取消订阅",
+        "messages": {
+          "unsubscribe_success": "取消订阅成功。",
+          "not_subscribed": "本群尚未订阅，无需取消订阅。"
+        }
+      },
+      "bind": {
+        "description": "[绑定] 绑定SteamID，并起一个别名（也可以不起）。",
+        "usage": "将你的SteamID与你的账号绑定，若本群已订阅将会实时获取你的新比赛数据发布至群中。名称中含有空格时需要使用\"\"引号包裹(英文半角引号)。",
+        "examples": "绑定 123456789\n绑定 123456789 张三\n绑定 123456789 \"张 三\"",
+        "messages": {
+          "steam_id_invalid": "SteamID无效。",
+          "bind_success": "绑定成功，\nID：{userId}\n别名：{nickName}\nSteamID：{steamId}",
+          "bind_failed": "绑定失败，{0}",
+          "reason_without_match": "SteamID无效或无任何场次。",
+          "reason_fetch_failed": "网络状况不佳或其他原因无法验证SteamID，请稍后重试。",
+          "already_binded": "你已绑定，无需重复绑定。\n以下是你的个人信息：\nID：{userId}\n别名：{nickName}\nSteamID：{steamId}",
+          "nick_name_too_long": "别名过长，请限制在20个字符以内。（也可以留空）",
+          "is_anonymous": "请注意：你的Steam玩家数据并未公开，将无法使用BOT的主要功能，如“战报追踪”、“查询最近指令”等。\n如需公开数据，请在DOTA2游戏内设置中公开。"
+        }
+      },
+      "unbind": {
+        "description": "[取消绑定] 取消绑定你的个人信息。",
+        "usage": "取消绑定你的个人信息。",
+        "examples": "取消绑定",
+        "messages": {
+          "unbind_success": "取消绑定成功。",
+          "not_binded": "尚未绑定，无需取消绑定。"
+        }
+      },
+      "rename": {
+        "description": "[改名] 修改绑定时设定的别名。",
+        "usage": "修改绑定时设定的别名。名称中含有空格时需要使用\"\"引号包裹(英文半角引号)。",
+        "examples": "改名 李四\n改名 \"李 四\"",
+        "messages": {
+          "rename_success": "改名成功，现在你叫{nick_name}了。",
+          "empty_input": "请输入你的别名。",
+          "not_binded": "请先绑定，绑定时即可设定别名。",
+          "nick_name_too_long": "别名过长，请限制在20个字符以内。",
+          "nick_name_same": "目标别名与原始别名相同，无需改名。"
+        }
+      },
+      "query-members": {
+        "description": "[查询群友] 查询本群已绑定的玩家。",
+        "usage": "查询本群已绑定的玩家，生成简单信息图片发布。",
+        "examples": "查询群友",
+        "messages": {
+          "title": "本群 DOTA2 玩家名册 (共 {count} 人)",
+          "table_headers": {
+            "nickname": "昵称/别名",
+            "winrate": "胜率 (近10场)",
+            "last_match": "最近比赛"
+          },
+          "no_members": "本群尚无绑定玩家。",
+          "query_failed": "查询群友失败。"
+        }
+      },
+      "query-match": {
+        "description": "[查询比赛] 查询指定比赛ID的比赛数据，生成图片发布。",
+        "usage": "查询指定MatchID的比赛数据，生成图片发布。",
+        "options": {
+          "parse": "-p 是否等待解析比赛数据"
+        },
+        "examples": "查询比赛 1234567890\n查询比赛 1234567890 -p\n查询比赛 1234567890 --parse",
+        "messages": {
+          "empty_input": "请输入比赛ID。",
+          "match_id_invalid": "比赛ID无效。",
+          "querying_match": "正在搜索对局详情，请稍后……",
+          "query_failed": "获取比赛数据失败。",
+          "waiting_for_parse": "比赛数据尚未解析，已发送解析请求到服务器，战报将在解析完成或超时后发送。"
+        }
+      },
+      "query-recent-match": {
+        "description": "[查询最近比赛] 查询最近的比赛数据，生成图片发布。",
+        "options": {
+          "parse": "-p 是否等待解析比赛数据"
+        },
+        "usage": "查询指定玩家的最近一场比赛的比赛数据，生成图片发布。\n参数可输入该玩家的SteamID或已在本群绑定玩家的别名，无参数时尝试查询调用指令玩家的SteamID。",
+        "examples": "查询最近比赛\n查询最近比赛 123456789\n查询最近比赛 张三\n查询最近比赛 123456789 -p\n查询最近比赛 张三 --parse",
+        "messages": {
+          "querying_match": "正在搜索对局详情，请稍后……",
+          "query_failed": "获取玩家最近比赛失败。",
+          "not_in_group": "指令调用失败。\n当前不属于群聊状态，必须提供指定玩家的SteamID。",
+          "is_anonymous": "你的比赛数据未公开，无法获取最近比赛数据。\n如需公开数据，请在DOTA2游戏内设置中公开。"
+        }
+      },
+      "query-player": {
+        "description": "[查询玩家] 查询玩家的个人信息，可指定英雄。",
+        "options": {
+          "hero": "-o 查询玩家指定英雄使用情况（同查询英雄，可用别名或ID）"
+        },
+        "usage": "查询指定玩家的个人信息，生成图片发布，可指定英雄。\n参数可输入该玩家的SteamID或已在本群绑定玩家的别名，无参数时尝试查询调用指令玩家的SteamID。",
+        "examples": "查询玩家\n查询玩家 123456789\n查询玩家 张三\n查询玩家 张三 --hero 敌法师\n查询玩家 张三 -o 15",
+        "messages": {
+          "querying_player": "正在获取玩家数据，请稍后……",
+          "query_failed": "获取玩家信息失败。",
+          "not_in_group": "指令调用失败。\n当前不属于群聊状态，必须提供指定玩家的SteamID。"
+        }
+      },
+      "query-hero": {
+        "description": "[查询英雄] 查询英雄技能/面板信息。",
+        "options": {
+          "random": "-r 随机选择英雄"
+        },
+        "usage": "查询英雄的技能说明与各项数据，生成图片发布。\n参数可输入英雄ID、英雄名、英雄常用别名。",
+        "examples": "查询英雄 15\n查询英雄 雷泽\n查询英雄 电魂\n查询英雄 -r",
+        "messages": {
+          "not_found": "未找到输入的英雄，请确认后重新输入。",
+          "querying_hero": "正在获取英雄数据，请稍后……",
+          "fetching_patch_notes": "正在获取英雄历史改动建立缓存，请稍候……",
+          "query_failed": "获取英雄数据失败。",
+          "empty_input": "请输入参数。"
+        }
+      },
+      "query-item": {
+        "description": "[查询物品] 查询物品信息。",
+        "usage": "查询物品的描述与各项数据，生成图片发布。\n参数可输入物品名（可模糊查找）、物品别名、物品ID。\n可在配置页中设置每次查询的最大发送数量、以及是否在超过限制或未输入参数时发送物品列表。",
+        "examples": "查询物品 先锋盾",
+        "messages": {
+          "query_list_failed": "获取物品列表数据失败。",
+          "query_item_failed": "获取物品「{0}」数据失败",
+          "querying_item": "正在查询物品数据，请稍候…",
+          "cache_building": "初次使用或缓存已过期，正在生成当前版本的物品缓存，请稍后……",
+          "empty_input": "未输入关键字参数。根据当前配置{#if show}，将返回全部物品列表{:else}无内容可发送{/if}。",
+          "not_found": "未找到与关键字匹配的物品，请确认后重试。",
+          "too_many_items": "找到{count}个物品，超过最大发送限制（{max}个）{#if show}，将发送物品列表{/if}。",
+          "finded_items": "找到以下物品：{#each items as item}{item.name_loc}{#if item !== items[items.length - 1]}、{/if}{/each}"
+        }
+      },
+      "hero-of-the-day": {
+        "description": "[今日英雄] 获取今日英雄推荐。",
+        "usage": "获取近期比赛记录、生涯比赛记录，根据胜场、表现分、是否手热等参数计算推荐英雄。\n参数可输入该玩家的SteamID或已在本群绑定玩家的别名，无参数时尝试查询调用指令玩家的SteamID。",
+        "options": {
+          "days": "-d <number> 近期数据的获取范围，单位为天数，默认值为30"
+        },
+        "examples": "今日英雄\n今日英雄 -d 60\n今日英雄 1234567890\n今日英雄 张三",
+        "messages": {
+          "title_recommendation": "今日推荐：",
+          "recommendation_intro": "今日为您推荐的英雄是：",
+          "recommendation_heroes": "{#each heroes as hero}{hero}{#if hero !== heroes[heroes.length - 1]}、{/if}{/each}",
+          "recommendation_type_lifetime_only": "您的近期数据为空，本次推荐结果基于您的生涯数据。",
+          "recommendation_type_no_record": "您的近期与生涯数据为空，无法生成推荐信息。",
+          "recommendation_type_anonymous": "您的个人数据未公开，无法生成推荐信息。",
+          "details": {
+            "pool_description": "推荐结果根据对您的近期与生涯英雄使用记录计分后，按总分排序后对前10位英雄以分数为权重随机取得。",
+            "table_intro": "以下是前10位英雄具体得分表。",
+            "table_headers": {
+              "hero": "英雄名称",
+              "recent_wins": "近期胜场分",
+              "lifetime_wins": "生涯胜场分<br>(对数)",
+              "imp_bonus": "imp奖励分",
+              "is_hot_streak": "是否手热",
+              "total_score": "总分"
+            },
+            "scoring_formula": "当前计分规则：[近期胜场数 x 1] + [log(生涯胜场数+1) x 5] + [近期imp x 0.1]",
+            "hot_streak_desc": "若英雄在3天内使用过，则记为手热英雄，总分提升20%。"
+          },
+          "title_meta": "环境趋势：",
+          "meta_intro": "一周内，基于您段位±1 ({tiers}) 范围内各位置<b>选择率≥2%</b>按胜率从高到低前三名优势英雄：",
+          "meta_table_header": "英雄名称(选择率% 胜率%)",
+          "meta_position": "{pos}号位：",
+          "querying": "正在查询玩家数据、英雄胜率等数据，请稍候……",
+          "query_failed": "指令调用失败。"
+        }
+      },
+      "common": {
+        "messages": {
+          "user_not_binded_in_channel": "无参数时默认从已绑定SteamID玩家中寻找你的信息，但你似乎并没有绑定。\n请在本群绑定SteamID。（可输入【绑定 -h】获取帮助）\n或在指令后跟上希望查询的SteamID或已绑定玩家的别名。",
+          "user_not_in_group": "指令调用失败。\n当前不属于群聊状态，必须提供指定玩家的SteamID。",
+          "invalid_input_include_steam_id": "SteamID无效并且未在本群根据输入信息找到玩家。",
+          "platform_not_supported": "当前平台（{platform}）暂不支持订阅。"
+        }
+      },
+      "help": {
+        "description": "[DOTA2指南] 获取插件的全部指令详细信息与在线文档链接。",
+        "usage": "获取插件的全部指令详细信息与在线文档链接。",
+        "examples": "DOTA2指南\nDOTA2帮助\nDOTA2说明",
+        "messages": {
+          "header": "以下是插件的全部指令。\n※注意 <arg> 是必须参数，[arg] 是可选参数，具体使用方法请看“用法示例”列。",
+          "footer": "插件配置、模板展示等更多信息请访问在线文档：\nhttps://sjtdev.github.io/koishi-plugin-dota2tracker/",
+          "table_headers": {
+            "command": "指令名",
+            "alias": "指令中文",
+            "arguments": "参数",
+            "description": "说明",
+            "options": "选项",
+            "examples": "用法示例"
+          }
+        }
+      }
+    }
+  }
+}

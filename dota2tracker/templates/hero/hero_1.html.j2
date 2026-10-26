@@ -1,0 +1,225 @@
+{#- Port of old/src/templates/hero/hero_1.ejs. Values come from presentation/viewmodels/hero.py. -#}
+{% macro patch_list(patches) -%}
+<div class="patches">
+  {% for patch in patches %}
+    <div class="patch_group">
+      <p class="patch_number">{{ patch.number }} <span class="patch_time">({{ patch.date }})</span>: </p>
+      {% for note in patch.notes %}
+        <p data-indent="{{ note.indent }}">{{ note.html }}</p>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</div>
+{%- endmacro %}
+<!DOCTYPE html>
+<html lang="{{ languageTag }}">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+        <style>
+          {{ css("common/normalize.min.css") }}
+          {{ css("hero/hero_1/base.css") }}
+          {% include "hero/hero_1/attr_icons.css.j2" %}
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+          <div class="hero" id="{{ id }}">
+            <img src="{{ heroImg }}"/>
+            <img class="pri_attr" src="{{ primaryAttrImg }}"/>
+            <div class="info">
+                <p class="name">{{ name }}</p>
+                <p class="roles">
+                    {% for role in roles %}
+                            <span class="role level{{ role.level }}">{{ role.name }}</span>
+                    {% endfor %}
+                </p>
+                <p class="attrs">
+                    {% for attr in attrs %}
+                    <span class="{{ attr.cls }}">{{ attr.base }} <span class="gain">+{{ attr.gain }}</span></span>
+                    {% endfor %}
+                </p>
+            </div>
+          </div>
+            <div class="hype">
+              <p class="npe">{{ npe }}</p>
+              {{ hype }}
+            </div>
+            <div class="details">
+              <div class="talents">
+                {% for row in talents %}
+                <div class="talent">
+                  <div class="left">{{ row.left }}</div>
+                  <div class="level">{{ row.level }}</div>
+                  <div class="right">{{ row.right }}</div>
+                </div>
+                {% endfor %}
+              </div>
+              <div class="list">
+                <div class="bars">
+                  <div class="health">
+                    <span class="number">{{ health.number }}</span>
+                    <span class="suffix">+{{ health.regen }}</span>
+                  </div>
+                  <div class="mana{{ ' zero' if mana.zero else '' }}">
+                    <span class="number">{{ mana.number }}</span>
+                    <span class="suffix">+{{ mana.regen }}</span>
+                  </div>
+                </div>
+                <div class="stats">
+                  {% for column in columns %}
+                  <div class="column">
+                    <p>{{ column.title }}</p>
+                    {% for stat in column.stats %}
+                    <div class="stat">
+                      <img src="{{ stat.img }}"/>
+                      <span>{{ stat.value }}</span>
+                    </div>
+                    {% endfor %}
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+
+            {% if patches %}{{ patch_list(patches) }}{% endif %}
+
+            <div class="skills">
+              {% for item in abilities %}
+              <div class="skill" data-innate="{{ item.innate }}">
+                <p class="title">
+                  <span class="name font-serif">{{ item.name }}</span>
+                  {% if item.isInnate %}
+                    <span class="is_innate">{{ t("dota2tracker.template.innate") }}</span>
+                  {% endif %}
+                  {% if item.grantedByScepter %}
+                    <img src="{{ scepterImg }}" class="scepter">
+                  {% endif %}
+                  {% if item.grantedByShard %}
+                    <img src="{{ shardImg }}" class="shard">
+                  {% endif %}
+                </p>
+
+                <div class="img_stats">
+                  <img src="{{ item.img }}" onerror="this.onerror=null; this.src='{{ innateIcon }}'; if(this.closest('.skill').dataset.innate === 'true') { this.closest('.skill').style.order = -1; this.closest('.skill').style.flexBasis = '100%'; }"/>
+
+                  <div class="stats">
+                    <p class="behavior">
+                      {{ t("dota2tracker.template.ability") }}
+                      {{ item.behavior }}
+                    </p>
+                    {% if item.targetTeam is not none %}
+                    <p class="target_team">
+                      {{ t("dota2tracker.template.affects") }}
+                      {{ item.targetTeam }}
+                    </p>
+                    {% endif %}
+                    {% if item.damage %}
+                    <p class="dmg_type {{ item.damage.cls }}">
+                      {{ t("dota2tracker.template.damage_type") }}
+                      <span>{{ item.damage.text }}</span>
+                    </p>
+                    {% endif %}
+                    {% if item.dispellable %}
+                    <p class="dispellable {{ item.dispellable.cls }}">
+                      {{ t("dota2tracker.template.dispellable") }}
+                      <span>{{ item.dispellable.text }}</span>
+                    </p>
+                    {% endif %}
+                    {% if item.bkbpierce %}
+                    <p class="bkbpierce {{ item.bkbpierce.cls }}">
+                      {{ t("dota2tracker.template.bkbpierce") }}
+                      <span>{{ item.bkbpierce.text }}</span>
+                    </p>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <p class="description">{{ item.description }}</p>
+
+                {% if item.scepterDesc %}
+                <p class="aghanim_description">
+                  <span class="title"><img src="{{ scepterImg }}" class="scepter">{{ t("dota2tracker.template.scepter") }}</span>
+                  <span class="desc">{{ item.scepterDesc }}</span>
+                </p>
+                {% endif %}
+                {% if item.shardDesc %}
+                <p class="aghanim_description">
+                  <span class="title"><img src="{{ shardImg }}" class="shard">{{ t("dota2tracker.template.shard") }}</span>
+                  <span class="desc">{{ item.shardDesc }}</span>
+                </p>
+                {% endif %}
+
+                {% if item.notes %}
+                <div class="notes">
+                  {% for note in item.notes %}
+                    <p>{{ note }}</p>
+                  {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="attributes">
+                  {% for sv in item.attributes %}
+                  <p>
+                    <span class="heading">{{ sv.heading }}</span>
+                    <span class="values">
+                      {% if sv.primary %}
+                      <span class="primary{{ ' empty' if sv.primary.empty else '' }}">
+                          {{ sv.primary.text }}
+                      </span>
+                      {% endif %}
+                      {% if sv.scepter %}
+                      <span class="alternative scepter">
+                        <img src="{{ scepterImg }}"/>
+                        {{ sv.scepter }}
+                      </span>
+                      {% endif %}
+                      {% if sv.shard %}
+                      <span class="alternative shard">
+                        <img src="{{ shardImg }}"/>
+                        {{ sv.shard }}
+                      </span>
+                      {% endif %}
+                      {% if sv.talents %}
+                      <span class="alternative talent">
+                        {% for bonus in sv.talents %}
+                          <img src="{{ talentImg }}"/>
+                          {{ bonus }}
+                        {% endfor %}
+                      </span>
+                      {% endif %}
+                    </span>
+                  </p>
+                  {% endfor %}
+                </div>
+
+                <p>
+                  {% if item.cooldown %}
+                  <span class="cooldown">
+                    {{ item.cooldown }}
+                  </span>
+                  {% endif %}
+                  {% if item.mana %}
+                  <span class="mana_cost">
+                    {{ item.mana }}
+                  </span>
+                  {% endif %}
+                </p>
+
+                {% if item.lore %}
+                <p class="lore">{{ item.lore }}</p>
+                {% endif %}
+
+                {% if item.patches %}{{ patch_list(item.patches) }}{% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="lore">
+              {{ bio }}
+            </div>
+
+            <p class="game_version">{{ t("dota2tracker.template.generated_at") }} {{ gameVersion }}</p>
+        </div>
+    </body>
+</html>

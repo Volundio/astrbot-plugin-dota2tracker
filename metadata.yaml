@@ -1,0 +1,12 @@
+name: astrbot_plugin_dota2tracker
+display_name: Dota2 Tracker
+desc: 追踪群友的 DOTA2 对局：订阅/绑定、Stratz 比赛战报、段位播报、日报周报、玩家/英雄/物品查询与图片模板。移植自 koishi-plugin-dota2tracker（GPL-3.0）。
+short_desc: 追踪群友的 DOTA2 对局与战报
+version: 1.1.0
+author: Volundio
+repo: https://github.com/Volundio/astrbot-plugin-dota2tracker
+astrbot_version: ">=4.29.0"
+support_platforms:
+  - aiocqhttp
+  - telegram
+  - discord

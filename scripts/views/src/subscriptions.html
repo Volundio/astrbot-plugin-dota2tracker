@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.subscriptions.title">Subscriptions</title>
+<style>
+/*@COMMON_CSS@*/
+.channel-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.channel-title code { color: var(--muted); }
+.channel-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rename-form { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.rename-form input { width: 12em; }
+.import-result { margin-top: 10px; }
+#filter { width: min(220px, 100%); }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.subscriptions.title">Subscriptions</h1>
+  <span class="spacer"></span>
+  <div class="toolbar">
+    <input type="search" id="filter" data-i18n-placeholder="views.subscriptions.filter" data-i18n-aria="views.subscriptions.filter">
+    <label class="inline small"><input type="checkbox" id="onlySubscribed"> <span data-i18n="views.subscriptions.onlySubscribed"></span></label>
+    <button type="button" id="reload" data-i18n="views.common.reload"></button>
+  </div>
+</header>
+<div id="banners"></div>
+<main id="content" class="stack"></main>
+
+<section class="card" style="margin-top:12px">
+  <h2 data-i18n="views.subscriptions.transfer"></h2>
+  <p class="muted small" data-i18n="views.subscriptions.transferHint"></p>
+  <div class="toolbar">
+    <button type="button" id="export" data-i18n="views.subscriptions.export"></button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <button type="button" id="chooseFile" data-i18n="views.subscriptions.chooseFile"></button>
+    <span id="fileName" class="muted small"></span>
+  </div>
+  <div id="importResult" class="import-result"></div>
+</section>
+
+<script>
+/*@COMMON_JS@*/
+
+const MAX_IMPORT_BYTES = 2 * 1024 * 1024;
+const state = { data: null, error: null, loading: true, filter: "", onlySubscribed: false, editing: null, importFile: null, preview: null };
+const $ = (id) => document.getElementById(id);
+
+async function load() {
+  state.loading = true;
+  render();
+  try {
+    state.data = await bridge.apiGet("subscriptions");
+    state.error = null;
+  } catch (error) {
+    state.error = error;
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+/** Run a mutation that returns the refreshed subscriptions DTO. */
+async function mutate(endpoint, body, button, successKey) {
+  try {
+    await busy(button, async () => {
+      state.data = await bridge.apiPost(endpoint, body);
+    });
+    state.editing = null;
+    toast(t(successKey), "ok");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  render();
+}
+
+function channelLabel(c) {
+  return c.name || c.channel_id;
+}
+
+function rankText(rank) {
+  if (!rank || !rank.medal) return t("views.subscriptions.rankUnknown");
+  if (rank.medal >= 8) {
+    return rank.leaderboard ? t("views.subscriptions.rankImmortalTop", { n: rank.leaderboard }) : t("views.subscriptions.rankImmortal");
+  }
+  return t("views.subscriptions.rankValue", { medal: t(`views.subscriptions.medals.${rank.medal}`, null, String(rank.medal)), star: rank.star || 0 });
+}
+
+function matches(player, channel) {
+  const q = state.filter.trim().toLowerCase();
+  if (!q) return true;
+  return [player && player.nickname, player && player.steam_id, player && player.user_id, channel && channel.channel_id, channel && channel.name]
+    .some((v) => v !== undefined && v !== null && String(v).toLowerCase().includes(q));
+}
+
+function renameCell(p) {
+  if (state.editing !== p.id) return h("span", { text: p.nickname || "-" });
+  const input = h("input", { type: "text", value: p.nickname, maxlength: "20", "aria-label": t("views.subscriptions.cols.nickname") });
+  const save = h("button", { type: "submit", class: "small primary", text: t("views.common.save") });
+  const form = h("form", { class: "rename-form", onsubmit: (event) => {
+    event.preventDefault();
+    const nickname = input.value.trim();
+    if (!nickname || [...nickname].length > 20) {
+      toast(t("views.common.errors.invalid_nickname"), "danger");
+      return;
+    }
+    mutate("players/rename", { id: p.id, nickname }, save, "views.subscriptions.renamed");
+  } }, input, save, h("button", { type: "button", class: "small", text: t("views.common.cancel"), onclick: () => { state.editing = null; render(); } }));
+  setTimeout(() => input.focus(), 0);
+  return form;
+}
+
+function playerTable(players) {
+  const col = (k) => t(`views.subscriptions.cols.${k}`);
+  return h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+    h("thead", {}, h("tr", {}, ["nickname", "userId", "steamId", "rank", "inGroup", "updatedAt"].map((k) => h("th", { text: col(k) })), h("th", {}))),
+    h("tbody", {}, players.map((p) => h("tr", {},
+      h("td", { "data-label": col("nickname") }, renameCell(p)),
+      h("td", { "data-label": col("userId") }, h("code", { text: p.user_id })),
+      h("td", { "data-label": col("steamId") }, h("code", { text: String(p.steam_id) })),
+      h("td", { "data-label": col("rank"), text: rankText(p.rank) }),
+      h("td", { "data-label": col("inGroup") }, p.inGroup === false ? badge(t("views.subscriptions.left"), "warn") : badge(t("views.subscriptions.member"), "ok")),
+      h("td", { "data-label": col("updatedAt"), class: "small", text: fmtTime(p.updated_at) }),
+      h("td", { class: "actions" },
+        h("button", { type: "button", class: "small", text: t("views.subscriptions.rename"), disabled: state.editing === p.id, onclick: () => { state.editing = p.id; render(); } }),
+        h("button", { type: "button", class: "small danger", text: t("views.subscriptions.unbind"), onclick: async (event) => {
+          const button = event.currentTarget;
+          const ok = await askConfirm(t("views.subscriptions.confirmUnbind", { name: p.nickname || p.user_id, steamId: p.steam_id }), { confirmText: t("views.subscriptions.unbind") });
+          if (ok) mutate("players/unbind", { id: p.id }, button, "views.subscriptions.unbound");
+        } })))))));
+}
+
+function localeSelect(c, locales) {
+  const select = h("select", { "aria-label": t("views.subscriptions.locale") },
+    h("option", { value: "", text: t("views.subscriptions.localeDefault") }),
+    locales.map((l) => h("option", { value: l, text: t(`views.common.locales.${l}`, null, l) })));
+  select.value = c.locale || "";
+  select.addEventListener("change", () => mutate("subscriptions/locale", { id: c.id, locale: select.value || null }, select, "views.subscriptions.localeSaved"));
+  return h("label", { class: "inline small" }, t("views.subscriptions.locale"), select);
+}
+
+function subscribeButton(c) {
+  if (c.subscribed) {
+    return h("button", { type: "button", class: "small danger", text: t("views.subscriptions.unsubscribe"), onclick: async (event) => {
+      const button = event.currentTarget;
+      const ok = await askConfirm(t("views.subscriptions.confirmUnsubscribe", { name: channelLabel(c) }), { confirmText: t("views.subscriptions.unsubscribe") });
+      if (ok) mutate("subscriptions/subscribe", { id: c.id, subscribed: false }, button, "views.subscriptions.unsubscribed");
+    } });
+  }
+  return h("button", { type: "button", class: "small primary", text: t("views.subscriptions.subscribe"), onclick: (event) =>
+    mutate("subscriptions/subscribe", { id: c.id, subscribed: true }, event.currentTarget, "views.subscriptions.subscribed") });
+}
+
+function channelCard(c, locales) {
+  const players = (c.players || []).filter((p) => matches(p, c) || matches(null, c));
+  return h("section", { class: "card" },
+    h("div", { class: "card-head" },
+      h("div", { class: "channel-title" },
+        h("h2", { text: channelLabel(c) }),
+        h("code", { text: c.umo }),
+        c.subscribed ? badge(t("views.subscriptions.subscribedBadge"), "ok") : badge(t("views.subscriptions.notSubscribed")),
+        c.supported ? null : badge(t("views.subscriptions.unsupported", { platform: c.platform_type }), "warn"),
+        c.supported && c.verified === false ? badge(t("views.subscriptions.bestEffort", { platform: c.platform_type })) : null),
+      h("span", { class: "spacer" }),
+      h("div", { class: "channel-controls" }, localeSelect(c, locales), subscribeButton(c))),
+    players.length ? playerTable(players) : stateBox("empty", t("views.subscriptions.noPlayers")));
+}
+
+function render() {
+  const content = $("content");
+  $("reload").disabled = state.loading;
+  if (state.loading && !state.data) return setContent(content, stateBox("loading"));
+  if (!state.data) return setContent(content, stateBox("error", errorText(state.error), load));
+
+  const d = state.data;
+  const locales = d.locales || [];
+  const unsupported = d.channels.some((c) => !c.supported);
+  setContent($("banners"), unsupported ? h("div", { class: "banner warn", role: "alert", text: t("views.common.onebotUnavailable") }) : null);
+
+  const channels = d.channels.filter((c) => (!state.onlySubscribed || c.subscribed) && (matches(null, c) || (c.players || []).some((p) => matches(p, c))));
+  const orphans = (d.orphanPlayers || []).filter((p) => matches(p, null));
+  const total = (d.channels || []).reduce((n, c) => n + (c.players || []).length, 0) + (d.orphanPlayers || []).length;
+  const summary = h("p", { class: "muted small", text: t("views.subscriptions.summary", {
+    channels: fmtNumber(d.channels.length), subscribed: fmtNumber(d.channels.filter((c) => c.subscribed).length), players: fmtNumber(total) }) });
+
+  if (!d.channels.length && !orphans.length) return setContent(content, summary, stateBox("empty", t("views.subscriptions.empty")));
+  setContent(content, summary,
+    channels.length ? channels.map((c) => channelCard(c, locales)) : stateBox("empty", t("views.subscriptions.noMatch")),
+    orphans.length ? h("section", { class: "card" },
+      h("div", { class: "card-head" }, h("h2", { text: t("views.subscriptions.orphans") })),
+      h("p", { class: "muted small", text: t("views.subscriptions.orphansHint") }),
+      playerTable(orphans)) : null);
+}
+
+/* ---------- export / import ---------- */
+function renderImport() {
+  const box = $("importResult");
+  $("fileName").textContent = state.importFile ? `${state.importFile.name} (${fmtBytes(state.importFile.size)})` : "";
+  if (!state.importFile) return setContent(box);
+  if (!state.preview) {
+    const btn = h("button", { type: "button", class: "primary", text: t("views.subscriptions.preview"), onclick: () => previewImport(btn) });
+    return setContent(box, btn);
+  }
+  const r = state.preview;
+  const summary = t(r.dryRun ? "views.subscriptions.previewResult" : "views.subscriptions.importDone", {
+    channelsAdded: r.channelsAdded, channelsSkipped: r.channelsSkipped, playersAdded: r.playersAdded, playersSkipped: r.playersSkipped });
+  if (!r.dryRun) return setContent(box, h("div", { class: "banner ok", text: summary }));
+  const nothing = !r.channelsAdded && !r.playersAdded;
+  const apply = h("button", { type: "button", class: "danger", text: t("views.subscriptions.apply"), disabled: nothing, onclick: () => applyImport(apply) });
+  setContent(box,
+    h("div", { class: "banner warn", text: summary }),
+    h("div", { class: "toolbar" }, apply, h("button", { type: "button", text: t("views.common.cancel"), onclick: resetImport }),
+      nothing ? h("span", { class: "muted small", text: t("views.subscriptions.nothingToImport") }) : null));
+}
+
+function resetImport() {
+  state.importFile = null;
+  state.preview = null;
+  $("importFile").value = "";
+  renderImport();
+}
+
+async function previewImport(button) {
+  try {
+    state.preview = await busy(button, () => bridge.upload("import/preview", state.importFile));
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  renderImport();
+}
+
+async function applyImport(button) {
+  const r = state.preview;
+  const ok = await askConfirm(t("views.subscriptions.confirmImport", { channels: r.channelsAdded, players: r.playersAdded }), { confirmText: t("views.subscriptions.apply") });
+  if (!ok) return;
+  try {
+    state.preview = await busy(button, () => bridge.upload("import/apply", state.importFile));
+    state.importFile = null;
+    $("importFile").value = "";
+    toast(t("views.subscriptions.imported"), "ok");
+    load();
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+  renderImport();
+  if (!state.importFile) $("fileName").textContent = "";
+}
+
+$("chooseFile").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", (event) => {
+  const file = event.target.files && event.target.files[0];
+  state.preview = null;
+  state.importFile = null;
+  if (file) {
+    if (!file.name.toLowerCase().endsWith(".json")) toast(t("views.common.errors.import_invalid_extension"), "danger");
+    else if (file.size > MAX_IMPORT_BYTES) toast(t("views.common.errors.import_too_large"), "danger");
+    else state.importFile = file;
+  }
+  renderImport();
+});
+$("export").addEventListener("click", (event) => busy(event.currentTarget, async () => {
+  try {
+    await bridge.download("export", {}, "dota2tracker-bindings.json");
+  } catch (error) {
+    toast(errorText(error), "danger");
+  }
+}));
+$("reload").addEventListener("click", load);
+$("filter").addEventListener("input", (event) => { state.filter = event.target.value; render(); });
+$("onlySubscribed").addEventListener("change", (event) => { state.onlySubscribed = event.target.checked; render(); });
+
+let started = false;
+boot(() => {
+  render();
+  renderImport();
+  if (!started) {
+    started = true;
+    load();
+  }
+});
+</script>
+</body>
+</html>

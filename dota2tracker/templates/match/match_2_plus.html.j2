@@ -1,0 +1,28 @@
+{#- Port of old/src/templates/match/match_2+.ejs. -#}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match</title>
+    <style>
+      {{ css("common/normalize.min.css") }}
+      {% include "match/match_2/original.css.j2" %}
+      {{ css("match/match_2_plus/extra.css") }}
+    </style>
+  </head>
+  <body>
+    <section id="regular">{% include "match/match_2/original.html.j2" %}</section>
+    <section id="extra">
+      {% if hasExtra %}
+        {% include "match/match_2_plus/charts.html.j2" %}
+        <div class="container">
+          {% include "match/match_2_plus/map.html.j2" %}
+          {% include "match/match_2_plus/lane_outcome.html.j2" %}
+        </div>
+      {% else %}
+        <div class="tip">{{ t("dota2tracker.template.empty_extra_info") }}</div>
+      {% endif %}
+    </section>
+  </body>
+</html>

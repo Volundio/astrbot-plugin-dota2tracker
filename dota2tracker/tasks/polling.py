@@ -1,0 +1,248 @@
+"""Parse polling (port of ``tasks/parse-polling.task.ts``).
+
+Pending matches are persisted in SQLite so a plugin reload neither loses
+waiting requests nor publishes a match twice (target fix: the original kept
+them only in memory).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import math
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from ..application.match import MatchResult, MatchService
+from ..application.models import OutgoingMessage, Subscriber
+from ..config import PluginConfig
+from ..data.cache import CacheService
+from ..data.database import Database
+from ..errors import ErrorReporter
+from ..i18n.service import I18nService
+from ..presentation.images import ImageFactory
+from ..presentation.messages import MessageBuilder
+from .ports import MessageSender
+
+__all__ = ["ParsePollingTask", "PendingEntry"]
+
+
+@dataclass
+class PendingEntry:
+    match_id: int
+    request_time: float
+    subscribers: list[Subscriber] = field(default_factory=list)
+
+
+class ParsePollingTask:
+    def __init__(
+        self,
+        *,
+        config: PluginConfig,
+        db: Database,
+        cache: CacheService,
+        matches: MatchService,
+        stratz,
+        opendota,
+        images: ImageFactory,
+        messages: MessageBuilder,
+        sender: MessageSender,
+        i18n: I18nService,
+        reporter: ErrorReporter,
+        logger: logging.Logger,
+        clock: Callable[[], float] = time.time,
+    ) -> None:
+        self._config = config
+        self._db = db
+        self._cache = cache
+        self._matches = matches
+        self._stratz = stratz
+        self._opendota = opendota
+        self._images = images
+        self._messages = messages
+        self._sender = sender
+        self._i18n = i18n
+        self._reporter = reporter
+        self._logger = logger
+        self._clock = clock
+        self._pending: dict[int, PendingEntry] = {}
+        self._index = 0
+        self._lock = asyncio.Lock()
+        self._background: set[asyncio.Task[Any]] = set()
+        self.last_poll: float | None = None
+
+    # ---------------------------------------------------------------- state
+    async def restore(self) -> None:
+        """Reload persisted pending matches (called once on startup)."""
+        for record in await self._db.list_pending_matches():
+            self._pending[record.match_id] = PendingEntry(
+                record.match_id,
+                float(record.request_time),
+                [Subscriber.from_dict(s) for s in record.subscribers if isinstance(s, dict)],
+            )
+
+    def is_pending(self, match_id: int) -> bool:
+        return match_id in self._pending
+
+    def snapshot(self) -> list[dict[str, Any]]:
+        now = self._clock()
+        return [
+            {
+                "matchId": entry.match_id,
+                "requestTime": int(entry.request_time),
+                "waitingMinutes": math.floor((now - entry.request_time) / 60),
+                "subscribers": [
+                    {"source": s.source, "type": s.type, "platform": s.platform, "channelId": s.channel_id}
+                    for s in entry.subscribers
+                ],
+            }
+            for entry in self._pending.values()
+        ]
+
+    async def _persist(self, entry: PendingEntry) -> None:
+        await self._db.save_pending_match(
+            entry.match_id, int(entry.request_time), [s.to_dict() for s in entry.subscribers]
+        )
+
+    def _spawn(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def stop(self) -> None:
+        for task in list(self._background):
+            task.cancel()
+        if self._background:
+            await asyncio.gather(*self._background, return_exceptions=True)
+
+    # ------------------------------------------------------------------ add
+    async def add(self, match_id: int, subscribers: list[Subscriber]) -> None:
+        async with self._lock:
+            is_new = match_id not in self._pending
+            entry = self._pending.get(match_id) or PendingEntry(match_id, self._clock())
+            entry.subscribers.extend(subscribers)
+            self._pending[match_id] = entry
+            await self._persist(entry)
+        if is_new:
+            self._spawn(self._request_parse(match_id))
+
+    async def _request_parse(self, match_id: int) -> None:
+        try:
+            value = await self._stratz.request_parse_match(match_id)
+        except Exception as error:
+            self._reporter.report(error, "parse-request")
+            value = False
+        key = "sent" if value else "failed"
+        self._logger.info(self._i18n.gt(f"dota2tracker.logger.parse_request_{key}", {"matchId": match_id}))
+
+    async def _request_opendota_parse(self, match_id: int) -> None:
+        try:
+            value = await self._opendota.request_parse_match(match_id)
+        except Exception as error:
+            self._reporter.report(error, "opendota-parse-request")
+            value = False
+        key = "sent" if value else "failed"
+        self._logger.info(self._i18n.gt(f"dota2tracker.logger.opendota_parse_request_{key}", {"matchId": match_id}))
+
+    # -------------------------------------------------------------- polling
+    async def polling(self) -> None:
+        """Check one pending match per tick (round robin, like the original)."""
+        self.last_poll = self._clock()
+        try:
+            if not self._pending:
+                return
+            entries = list(self._pending.values())
+            if self._index >= len(entries):
+                self._index = 0
+            entry = entries[self._index]
+            self._index += 1
+            await self._poll_entry(entry)
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:
+            self._reporter.report(error, "parse-polling")
+
+    async def _poll_entry(self, entry: PendingEntry) -> None:
+        timeout_seconds = self._config.data_parsing_timeout_minutes * 60
+        now = self._clock()
+        need_to_wait = now < entry.request_time + timeout_seconds
+        result: MatchResult | None = None
+        try:
+            result = await self._matches.get_match_result(
+                entry.match_id, wait_for_parse=need_to_wait, allow_fallback=self._config.enable_opendota_fallback
+            )
+        except Exception as error:
+            self._reporter.report(error, "parse-polling")
+
+        if result is not None and result.ready and result.match_data:
+            await self._publish(entry, result.match_data)
+            return
+        if result is None or result.status == "PENDING":
+            waiting = math.floor((now - entry.request_time) / 60)
+            if waiting > 0 and waiting % 5 == 0:
+                self._logger.info(
+                    self._i18n.gt("dota2tracker.logger.waiting_for_parse", {"matchId": entry.match_id, "time": waiting})
+                )
+                if self._config.enable_opendota_fallback and self._opendota is not None:
+                    self._spawn(self._request_opendota_parse(entry.match_id))
+            return
+        # NOT_FOUND keeps the entry until the timeout turns it into an unparsed
+        # report, mirroring the original (which only removed READY entries).
+
+    async def _publish(self, entry: PendingEntry, match_query: dict[str, Any]) -> None:
+        by_locale: dict[str, list[Subscriber]] = {}
+        for subscriber in entry.subscribers:
+            by_locale.setdefault(subscriber.language_tag, []).append(subscriber)
+
+        delivered: list[dict[str, str]] = []
+        for locale, subscribers in by_locale.items():
+            try:
+                match = await self._matches.generate_match_data(match_query)
+            except Exception as error:
+                self._reporter.report(error, "parse-polling/format")
+                continue
+            default_image = None
+            for subscriber in subscribers:
+                template = (
+                    subscriber.template_name if subscriber.source == "COMMAND" and subscriber.template_name else None
+                )
+                try:
+                    if template is None:
+                        if default_image is None:
+                            default_image = await self._images.match(match, locale, self._config.template_match)
+                        image = default_image
+                    else:
+                        image = await self._images.match(match, locale, template)
+                except Exception as error:
+                    self._reporter.report(error, "parse-polling/render")
+                    continue
+                text = self._messages.match_message(locale, match, [p.steam_id for p in subscriber.relevant_players])
+                try:
+                    ok = await self._sender.send(subscriber.umo, OutgoingMessage.of(text, image))
+                except Exception as error:
+                    self._reporter.report(error, f"send/{subscriber.umo}")
+                    ok = False
+                if ok:
+                    delivered.append(
+                        {"platform": subscriber.platform, "guildId": subscriber.channel_id, "languageTag": locale}
+                    )
+
+        match_info = match_query.get("match") or {}
+        parsed = "parsed" if match_info.get("parsedDateTime") else "unparsed"
+        self._logger.info(
+            self._i18n.gt(
+                f"dota2tracker.logger.match_{parsed}",
+                {
+                    "matchId": match_info.get("id", entry.match_id),
+                    "timeout": self._config.data_parsing_timeout_minutes,
+                    "guilds": delivered,
+                    "odParsed": match_info.get("odParsed"),
+                },
+            )
+        )
+        await self._cache.mark_match_sent(entry.match_id)
+        async with self._lock:
+            self._pending.pop(entry.match_id, None)
+            await self._db.delete_pending_match(entry.match_id)

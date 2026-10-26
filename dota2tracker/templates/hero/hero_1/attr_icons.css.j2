@@ -1,0 +1,12 @@
+{#- The three EJS rules of old hero_1/base.css (attribute icons via getImageUrl). -#}
+.hero .info .attrs > span.str::before {
+  background-image: url("{{ img('hero_strength', 'icons') }}");
+}
+
+.hero .info .attrs > span.agi::before {
+  background-image: url("{{ img('hero_agility', 'icons') }}");
+}
+
+.hero .info .attrs > span.int::before {
+  background-image: url("{{ img('hero_intelligence', 'icons') }}");
+}

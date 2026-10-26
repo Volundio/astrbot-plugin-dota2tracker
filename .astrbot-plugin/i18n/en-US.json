@@ -1,0 +1,461 @@
+{
+  "metadata": {
+    "display_name": "Dota 2 Tracker",
+    "desc": "Dota 2 match tracking, image reports, rank broadcasts, daily/weekly reports and lookup commands (ported from koishi-plugin-dota2tracker)."
+  },
+  "views": {
+    "common": {
+      "loading": "Loading…",
+      "empty": "No data",
+      "error": "Failed to load",
+      "retry": "Retry",
+      "reload": "Reload",
+      "confirm": "Confirm",
+      "confirmTitle": "Please confirm",
+      "cancel": "Cancel",
+      "save": "Save",
+      "never": "Never",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "configured": "Configured",
+      "missing": "Missing",
+      "running": "Running",
+      "stopped": "Stopped",
+      "onebotUnavailable": "Some channels belong to a disabled platform and will not receive messages.",
+      "level": {
+        "error": "Error",
+        "warning": "Warning"
+      },
+      "locales": {
+        "zh-CN": "Simplified Chinese",
+        "en-US": "English"
+      },
+      "errorCols": {
+        "time": "Time",
+        "source": "Source",
+        "type": "Type",
+        "message": "Message"
+      },
+      "errors": {
+        "unknown": "Request failed: {message}",
+        "invalid_param": "Invalid parameter: {name}",
+        "internal_error": "Internal server error; check the AstrBot log.",
+        "channel_not_found": "Channel not found; it may have been removed.",
+        "player_not_found": "Binding not found; it may have been removed.",
+        "invalid_nickname": "Nickname must be 1–20 characters without line breaks.",
+        "invalid_locale": "Unsupported language.",
+        "invalid_variant": "Unsupported preview variant.",
+        "invalid_id": "Invalid ID.",
+        "template_not_found": "Template not found.",
+        "unknown_target": "Unknown check target.",
+        "unknown_namespace": "Unknown cache namespace.",
+        "import_missing_file": "No file was uploaded.",
+        "import_invalid_extension": "Only .json files can be imported.",
+        "import_too_large": "The file exceeds the 2 MB limit.",
+        "import_invalid_json": "The file is not valid JSON.",
+        "import_invalid_format": "Unrecognised format: expected a file exported by this plugin."
+      },
+      "noPlatform": "No messaging platform adapter is running; reports cannot be delivered.",
+      "noOnebot": "No OneBot (aiocqhttp) adapter detected: tip recall, member filtering and group cards/avatars are unavailable; everything else works."
+    },
+    "overview": {
+      "title": "Overview",
+      "refresh": "Refresh",
+      "refreshed": "Member cache and status refreshed",
+      "autoRefresh": "Auto-refresh every 30 s",
+      "updatedAt": "Updated {time}",
+      "noStratzToken": "Stratz API token is not configured; queries and tracking are unavailable.",
+      "schedulerStopped": "The scheduler is not running; tracking and reports are paused.",
+      "features": "Features",
+      "stratzToken": "Stratz token",
+      "opendota": "OpenDota fallback",
+      "rankBroadcast": "Rank broadcast",
+      "dailyReport": "Daily report",
+      "weeklyReport": "Weekly report",
+      "scheduler": "Scheduler",
+      "state": "State",
+      "startedAt": "Started",
+      "ticks": "Ticks",
+      "activeJobs": "Active jobs",
+      "lastDiscovery": "Last discovery",
+      "lastPoll": "Last parse poll",
+      "lastDaily": "Last daily report",
+      "lastWeekly": "Last weekly report",
+      "counts": "Data",
+      "subscribedChannels": "Subscribed channels",
+      "channels": "Channels",
+      "players": "Bound players",
+      "pendingMatches": "Pending matches",
+      "sentMatches": "Sent matches",
+      "matchExtensions": "Match extensions",
+      "memberCache": "Member cache: {groups} groups, {members} members",
+      "openDotaCalls": "OpenDota calls today: {count}",
+      "openDotaCallsDisabled": "OpenDota fallback disabled",
+      "rendererAndData": "Renderer & constants",
+      "renders": "Renders",
+      "renderFailures": "Render failures",
+      "lastRenderMs": "Last render time",
+      "lastRenderError": "Last render error",
+      "constantsVersion": "Constants version",
+      "constantsSize": "Constants size",
+      "constantsSizeValue": "{heroes} heroes / {items} items / {abilities} abilities",
+      "configIssues": "Configuration issues",
+      "pending": "Matches waiting for parse",
+      "noPending": "No matches are waiting for parse",
+      "pendingCols": {
+        "matchId": "Match ID",
+        "requestTime": "Requested",
+        "waiting": "Waiting",
+        "subscribers": "Subscribers"
+      },
+      "subscriberType": {
+        "CHANNEL": "Group",
+        "PRIVATE": "Private"
+      },
+      "subscriberSource": {
+        "AUTOMATIC": "Auto tracking",
+        "COMMAND": "Command"
+      },
+      "minutes": "{n} min",
+      "recentErrors": "Recent errors",
+      "noErrors": "No recent errors",
+      "upstream": "Upstream: {url} (GPL-3.0)"
+    },
+    "subscriptions": {
+      "title": "Subscriptions",
+      "filter": "Search name, SteamID, user, group",
+      "onlySubscribed": "Subscribed only",
+      "summary": "{channels} channels ({subscribed} subscribed), {players} bound players",
+      "empty": "No channels or bindings yet. They appear here after using the subscribe/bind commands in a group.",
+      "noMatch": "No channels match the filter",
+      "noPlayers": "No players bound in this channel",
+      "subscribedBadge": "Subscribed",
+      "notSubscribed": "Not subscribed",
+      "unsupported": "Unsupported platform: {platform}",
+      "subscribe": "Subscribe",
+      "unsubscribe": "Unsubscribe",
+      "subscribed": "Channel subscribed",
+      "unsubscribed": "Channel unsubscribed",
+      "confirmUnsubscribe": "Unsubscribe \"{name}\"? The channel stops receiving reports; bindings are kept.",
+      "locale": "Language",
+      "localeDefault": "Use global default",
+      "localeSaved": "Channel language updated",
+      "cols": {
+        "nickname": "Nickname",
+        "userId": "User ID",
+        "steamId": "SteamID",
+        "rank": "Rank",
+        "inGroup": "Membership",
+        "updatedAt": "Updated"
+      },
+      "member": "In group",
+      "left": "Not in group",
+      "rankUnknown": "Unknown",
+      "rankValue": "{medal} {star}★",
+      "rankImmortal": "Immortal",
+      "rankImmortalTop": "Immortal #{n}",
+      "medals": {
+        "1": "Herald",
+        "2": "Guardian",
+        "3": "Crusader",
+        "4": "Archon",
+        "5": "Legend",
+        "6": "Ancient",
+        "7": "Divine",
+        "8": "Immortal"
+      },
+      "rename": "Rename",
+      "renamed": "Nickname updated",
+      "unbind": "Unbind",
+      "unbound": "Binding removed",
+      "confirmUnbind": "Remove the binding of \"{name}\" (SteamID {steamId})?",
+      "orphans": "Bindings without a channel",
+      "orphansHint": "These players belong to channels without a record (e.g. never subscribed) and are not tracked.",
+      "transfer": "Import / export",
+      "transferHint": "Exports contain channels, bindings and ranks only, never tokens. Import accepts files exported by this plugin (backup/restore or moving to another AstrBot instance); existing bindings are never overwritten.",
+      "export": "Export JSON",
+      "chooseFile": "Choose import file…",
+      "preview": "Preview import",
+      "previewResult": "Preview: {channelsAdded} channels to add, {channelsSkipped} skipped; {playersAdded} bindings to add, {playersSkipped} skipped.",
+      "importDone": "Import finished: {channelsAdded} channels added, {channelsSkipped} skipped; {playersAdded} bindings added, {playersSkipped} skipped.",
+      "nothingToImport": "Nothing new to import",
+      "apply": "Apply import",
+      "confirmImport": "This adds {channels} channel subscriptions and {players} bindings. Import now?",
+      "imported": "Import completed",
+      "bestEffort": "{platform}: best effort"
+    },
+    "templates": {
+      "title": "Templates",
+      "empty": "No templates available",
+      "previewSettings": "Preview settings",
+      "template": "Template",
+      "locale": "Language",
+      "variant": "Variant",
+      "fixtureHint": "Previews are rendered from bundled fixtures without calling external APIs.",
+      "render": "Render preview",
+      "rendering": "Rendering…",
+      "preview": "Preview",
+      "noPreview": "Choose a template and click \"Render preview\"",
+      "previewAlt": "{name} template preview",
+      "kinds": {
+        "match": "Match",
+        "player": "Player",
+        "hero": "Hero",
+        "item": "Item",
+        "report": "Report",
+        "rank": "Rank",
+        "misc": "Misc"
+      },
+      "variants": {
+        "default": "Default",
+        "opendota": "OpenDota data",
+        "anonymous": "Anonymous player",
+        "hero": "Specific hero",
+        "recipe": "Recipe",
+        "down": "Rank down",
+        "lifetime": "Lifetime",
+        "hideCombi": "Hide combinations"
+      },
+      "renderStats": "Render stats",
+      "renderStatsValue": "{renders} renders, {failures} failures",
+      "renderer": "Rendering",
+      "systemFonts": "Images use the default system fonts of the machine running the t2i service; the plugin neither bundles nor embeds fonts."
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "download": "Download diagnostics",
+      "runtime": "Runtime",
+      "schemaVersion": "Schema version",
+      "countLabels": {
+        "channels": "Channels",
+        "subscribed_channels": "Subscribed channels",
+        "players": "Bound players",
+        "match_extensions": "Match extensions",
+        "sent_matches": "Sent matches",
+        "pending_matches": "Pending matches"
+      },
+      "apiChecks": "API connectivity",
+      "targets": {
+        "stratz": "Stratz",
+        "valve": "Valve",
+        "opendota": "OpenDota"
+      },
+      "queue": "Queue {n}",
+      "queueDisabled": "Disabled",
+      "check": "Check",
+      "checking": "Checking…",
+      "notChecked": "Not checked",
+      "reachable": "Reachable",
+      "unreachable": "Failed",
+      "confirmCheck": "This sends a real request to {target} (uses API quota and is audited). Continue?",
+      "configCheck": "Configuration check",
+      "configOk": "Configuration is valid",
+      "redactedConfig": "Show redacted configuration",
+      "cache": "Cache",
+      "cacheEmpty": "Cache is empty",
+      "cacheCols": {
+        "namespace": "Namespace",
+        "entries": "Entries",
+        "bytes": "Size",
+        "expired": "Expired"
+      },
+      "purgeExpired": "Purge expired",
+      "clear": "Clear",
+      "confirmClear": "Clear every entry in cache namespace \"{namespace}\"?",
+      "confirmPurge": "Purge all expired cache entries and sent-match markers?",
+      "cleared": "Removed {n} entries",
+      "clearErrors": "Clear",
+      "confirmClearErrors": "Clear the recent error list?",
+      "errorsCleared": "Recent errors cleared",
+      "audit": "Audit log",
+      "auditEmpty": "No audit entries",
+      "auditCols": {
+        "time": "Time",
+        "actor": "Actor",
+        "action": "Action",
+        "detail": "Detail"
+      },
+      "actions": {
+        "refresh": "Refresh",
+        "subscribe": "Subscribe",
+        "unsubscribe": "Unsubscribe",
+        "set_locale": "Set language",
+        "rename": "Rename",
+        "unbind": "Unbind",
+        "export": "Export",
+        "import": "Import",
+        "fonts_rescan": "Rescan fonts",
+        "api_check": "API check",
+        "clear_cache": "Clear cache",
+        "clear_errors": "Clear errors",
+        "diagnostic_export": "Diagnostic export"
+      }
+    }
+  },
+  "config": {
+    "stratz_api_token": {
+      "description": "STRATZ API Token (required)",
+      "hint": "API token from https://stratz.com/api. Without it nothing can be queried and background tracking stays off."
+    },
+    "data_parsing_timeout_minutes": {
+      "description": "Parse waiting time (minutes)",
+      "hint": "When a match is still unparsed after this time the report is published anyway. Range 0–1440."
+    },
+    "proxy_address": {
+      "description": "Proxy address",
+      "hint": "e.g. http://127.0.0.1:7890 or socks5://host:port. Leave empty for no proxy."
+    },
+    "suppress_api_network_errors": {
+      "description": "Log network errors at debug level",
+      "hint": "Timeouts and connection failures from Stratz/OpenDota are logged as debug (403 excluded)."
+    },
+    "enable_opendota_fallback": {
+      "description": "Enable OpenDota fallback",
+      "hint": "Use OpenDota for match tracking and queries when Stratz has no usable result."
+    },
+    "opendota_api_key": {
+      "description": "OpenDota API key",
+      "hint": "Paid OpenDota subscription key. Leave empty on the free tier."
+    },
+    "opendota_ip_stack": {
+      "description": "OpenDota IP stack",
+      "hint": "Force IPv4 if OpenDota requests keep failing (ignored when a proxy is set).",
+      "labels": [
+        "Auto",
+        "Force IPv4"
+      ]
+    },
+    "default_locale": {
+      "description": "Default language",
+      "hint": "Runtime language for channels without their own setting.",
+      "labels": [
+        "简体中文",
+        "English"
+      ]
+    },
+    "use_hero_nicknames": {
+      "description": "Use hero nicknames",
+      "hint": "When off, only official hero names are used."
+    },
+    "url_in_message_type": {
+      "description": "Attach links to messages",
+      "hint": "match: Stratz match link; player: Stratz player link; hero: Dota wiki link.",
+      "labels": [
+        "Match",
+        "Player",
+        "Hero"
+      ]
+    },
+    "max_send_item_count": {
+      "description": "Max item images per query",
+      "hint": "Above this count the next option decides whether to send the item list. Range 1–10."
+    },
+    "show_item_list_at_too_much_items": {
+      "description": "Send item list when too many items",
+      "hint": "Send an image of the matching items when the result exceeds the maximum."
+    },
+    "custom_item_alias": {
+      "description": "Extra item aliases",
+      "hint": "Add aliases missing from the built-in list, e.g. keyword: Blink Dagger, alias: blink.",
+      "templates": {
+        "alias": {
+          "name": "Item alias",
+          "items": {
+            "keyword": {
+              "description": "Keyword"
+            },
+            "alias": {
+              "description": "Alias"
+            }
+          }
+        }
+      }
+    },
+    "auto_recall_tips": {
+      "description": "Recall tip messages",
+      "hint": "Recall tips such as \"Searching for the match…\" after a command finishes (OneBot; ignored on failure)."
+    },
+    "rank_broad_switch": {
+      "description": "Rank change broadcast"
+    },
+    "rank_broad_star": {
+      "description": "Broadcast star changes"
+    },
+    "rank_broad_leader": {
+      "description": "Broadcast leaderboard changes"
+    },
+    "rank_broad_fun": {
+      "description": "Fun rank broadcast template",
+      "hint": "Broadcast rank changes as an image."
+    },
+    "daily_report_switch": {
+      "description": "Daily report"
+    },
+    "daily_report_hours": {
+      "description": "Daily report hour",
+      "hint": "0–23 in the AstrBot server time zone."
+    },
+    "daily_report_show_combi": {
+      "description": "Daily report combinations (legacy)",
+      "hint": "Not used by the current daily report; kept for compatibility."
+    },
+    "weekly_report_switch": {
+      "description": "Weekly report"
+    },
+    "weekly_report_day_hours": {
+      "description": "Weekly report time [weekday, hour]",
+      "hint": "Two numbers: weekday (1–7, 7 = Sunday) and hour (0–23). Default Monday 10:00."
+    },
+    "weekly_report_show_combi": {
+      "description": "Weekly report combinations"
+    },
+    "template_match": {
+      "description": "Match template",
+      "hint": "Template used for match images."
+    },
+    "template_player": {
+      "description": "Player template"
+    },
+    "template_hero": {
+      "description": "Hero template"
+    },
+    "player_rank_estimate": {
+      "description": "Rank estimation",
+      "hint": "Estimate a rank for unranked players in the player template (shown in grey)."
+    },
+    "patch_notes_retrieval_depth": {
+      "description": "Patch history depth (major versions)",
+      "hint": "Number of major versions of change history shown in hero/item templates, 1–5."
+    },
+    "render_scale": {
+      "description": "Render resolution",
+      "hint": "Device scale level of rendered images.",
+      "labels": [
+        "Normal",
+        "High",
+        "Ultra"
+      ]
+    },
+    "render_image_type": {
+      "description": "Image format"
+    },
+    "render_jpeg_quality": {
+      "description": "JPEG quality",
+      "hint": "10–100, only for jpeg."
+    }
+  },
+  "pages": {
+    "overview": {
+      "title": "Overview"
+    },
+    "subscriptions": {
+      "title": "Subscriptions"
+    },
+    "templates": {
+      "title": "Templates"
+    },
+    "diagnostics": {
+      "title": "Diagnostics"
+    }
+  }
+}

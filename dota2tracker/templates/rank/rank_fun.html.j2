@@ -1,0 +1,50 @@
+{#- Port of old/src/templates/rank/rank_fun.ejs. Values come from presentation/viewmodels/rank.py.
+    The Koishi screenshot was the <body> box (1024×740); the background keeps the original
+    "cover over 1024×768" geometry via an explicit size so the html height can stay auto. -#}
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rank Change</title>
+    <style>
+      * { margin: 0; padding: 0; }
+      html { width: 1024px; }
+      body { background: no-repeat center top / auto 768px; }
+      .wrapper { padding: 80px; padding-top: 180px; }
+      .wrapper > p { font-size: 32px; line-height: 48px; height: 48px; text-align: center; }
+      body.xi p.bei, body.bei p.xi { display: none; }
+      .wrapper > p > span { margin: 0 10px; }
+      .wrapper > p > span.prev { color: gray; }
+      .wrapper > p > span.curr { font-weight: bold; color: red; }
+      .wrapper > p > img { width: 48px; height: 48px; vertical-align: middle; line-height: 48px; }
+      .ranks { margin-top: 40px; display: flex; width: 100%; height: 256px; justify-content: space-evenly; }
+      div.rank { position: relative; width: 256px; height: 256px; }
+      div.rank > img { position: absolute; }
+      div.rank.prev { filter: grayscale(1); }
+      div.rank.curr { transform: scale(1.25); }
+      div.rank p { font-size: 36px; bottom: 20px; width: 100%; text-align: center; color: #fff; position: absolute; }
+    </style>
+  </head>
+  <body class="{{ kind }}" style="background-image: url({{ background }})">
+    <div class="wrapper">
+      <p class="{{ kind }}">
+        {{ message }}
+      </p>
+      <p></p>
+      <div class="ranks">
+        <div class="rank prev">
+          <img src="{{ prev.medal }}" alt="" />
+          <img src="{{ prev.star }}" alt="" />
+          <p>{{ prev.leader }}</p>
+        </div>
+        <div class="rank curr">
+          <img src="{{ curr.medal }}" alt="" />
+          <img src="{{ curr.star }}" alt="" />
+          <p>{{ curr.leader }}</p>
+        </div>
+      </div>
+      <p style="text-align: right; margin-top: 40px;">—— {{ date }}</p>
+    </div>
+  </body>
+</html>

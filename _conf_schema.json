@@ -1,0 +1,258 @@
+{
+  "stratz_api_token": {
+    "description": "STRATZ API Token（必填）",
+    "type": "string",
+    "hint": "stratz.com 的 API TOKEN，可在 https://stratz.com/api 获取。未配置时无法查询，后台追踪不会启动。",
+    "default": "",
+    "secret": true,
+    "obvious_hint": true
+  },
+  "data_parsing_timeout_minutes": {
+    "description": "等待比赛解析的时间（分钟）",
+    "type": "int",
+    "hint": "超过等待时间仍未解析时直接生成战报。范围 0–1440。",
+    "default": 60
+  },
+  "proxy_address": {
+    "description": "代理地址",
+    "type": "string",
+    "hint": "如 http://127.0.0.1:7890 或 socks5://host:port，不使用代理请留空。",
+    "default": "",
+    "secret": true
+  },
+  "suppress_api_network_errors": {
+    "description": "网络错误降级为 debug 日志",
+    "type": "bool",
+    "hint": "开启后 Stratz/OpenDota 的超时、断网等网络错误以 debug 级别输出（403 除外）。",
+    "default": false
+  },
+  "enable_opendota_fallback": {
+    "description": "启用 OpenDota 备用数据源",
+    "type": "bool",
+    "hint": "Stratz 无可用结果时使用 OpenDota 作为战报追踪与查询比赛的备用数据源。",
+    "default": false
+  },
+  "opendota_api_key": {
+    "description": "OpenDota API Key",
+    "type": "string",
+    "hint": "OpenDota 付费订阅 API Key，免费用户请留空。",
+    "default": "",
+    "secret": true
+  },
+  "opendota_ip_stack": {
+    "description": "OpenDota IP 协议栈",
+    "type": "string",
+    "hint": "访问 OpenDota 频繁失败时可强制使用 IPv4（配置代理时忽略）。",
+    "default": "auto",
+    "options": [
+      "auto",
+      "ipv4"
+    ],
+    "labels": [
+      "自动",
+      "强制 IPv4"
+    ]
+  },
+  "default_locale": {
+    "description": "默认语言",
+    "type": "string",
+    "hint": "频道未单独设置语言时使用的运行时语言。",
+    "default": "zh-CN",
+    "options": [
+      "zh-CN",
+      "en-US"
+    ],
+    "labels": [
+      "简体中文",
+      "English"
+    ]
+  },
+  "use_hero_nicknames": {
+    "description": "使用英雄别名",
+    "type": "bool",
+    "hint": "关闭后仅使用英雄正式名称。",
+    "default": true
+  },
+  "url_in_message_type": {
+    "description": "消息中附带链接",
+    "type": "list",
+    "hint": "可填写 match（比赛/战报附带 Stratz 比赛链接）、player（玩家附带 Stratz 玩家链接）、hero（英雄附带刀塔百科链接）。",
+    "default": [],
+    "options": [
+      "match",
+      "player",
+      "hero"
+    ],
+    "labels": [
+      "比赛",
+      "玩家",
+      "英雄"
+    ]
+  },
+  "max_send_item_count": {
+    "description": "最大发送物品图片数量",
+    "type": "int",
+    "hint": "查询物品结果超过该数量时由下一项决定是否发送物品列表图片。范围 1–10。",
+    "default": 5
+  },
+  "show_item_list_at_too_much_items": {
+    "description": "物品过多时发送物品列表",
+    "type": "bool",
+    "hint": "查询结果超过最大数量时发送匹配物品列表图片。",
+    "default": true
+  },
+  "custom_item_alias": {
+    "description": "额外物品别名",
+    "type": "template_list",
+    "hint": "内置别名列表没有的物品别名可在此追加，例如 关键词：闪烁匕首，别名：跳刀。",
+    "templates": {
+      "alias": {
+        "name": "物品别名",
+        "items": {
+          "keyword": {
+            "description": "关键词",
+            "type": "string"
+          },
+          "alias": {
+            "description": "别名",
+            "type": "string"
+          }
+        }
+      }
+    },
+    "default": []
+  },
+  "auto_recall_tips": {
+    "description": "自动撤回提示消息",
+    "type": "bool",
+    "hint": "指令结束后撤回“正在搜索对局详情，请稍后……”等提示（OneBot 支持；失败时忽略）。",
+    "default": true
+  },
+  "rank_broad_switch": {
+    "description": "段位变动播报",
+    "type": "bool",
+    "default": false
+  },
+  "rank_broad_star": {
+    "description": "星级变动播报",
+    "type": "bool",
+    "default": true
+  },
+  "rank_broad_leader": {
+    "description": "冠绝名次变动播报",
+    "type": "bool",
+    "default": true
+  },
+  "rank_broad_fun": {
+    "description": "整活播报模板",
+    "type": "bool",
+    "hint": "开启后以图片形式进行段位变动播报。",
+    "default": false
+  },
+  "daily_report_switch": {
+    "description": "日报功能",
+    "type": "bool",
+    "default": false
+  },
+  "daily_report_hours": {
+    "description": "日报发布小时",
+    "type": "int",
+    "hint": "0–23，按 AstrBot 所在时区。",
+    "default": 6
+  },
+  "daily_report_show_combi": {
+    "description": "日报显示组合（兼容字段）",
+    "type": "bool",
+    "hint": "新版日报不使用此项，仅为兼容原配置保留。",
+    "default": true
+  },
+  "weekly_report_switch": {
+    "description": "周报功能",
+    "type": "bool",
+    "default": false
+  },
+  "weekly_report_day_hours": {
+    "description": "周报发布时间 [周几, 几点]",
+    "type": "list",
+    "hint": "两个数字：周几（1–7，7 为周日）与小时（0–23）。默认周一 10 点。",
+    "default": [
+      1,
+      10
+    ]
+  },
+  "weekly_report_show_combi": {
+    "description": "周报显示组合",
+    "type": "bool",
+    "default": true
+  },
+  "template_match": {
+    "description": "比赛模板",
+    "type": "string",
+    "hint": "生成比赛信息图片使用的模板。",
+    "default": "match_1",
+    "options": [
+      "match_1",
+      "match_2",
+      "match_2+"
+    ]
+  },
+  "template_player": {
+    "description": "玩家模板",
+    "type": "string",
+    "default": "player_1",
+    "options": [
+      "player_1"
+    ]
+  },
+  "template_hero": {
+    "description": "英雄模板",
+    "type": "string",
+    "default": "hero_1",
+    "options": [
+      "hero_1"
+    ]
+  },
+  "player_rank_estimate": {
+    "description": "段位估算",
+    "type": "bool",
+    "hint": "在 player 模板中对没有段位的玩家估算段位，估算段位以灰色显示。",
+    "default": true
+  },
+  "patch_notes_retrieval_depth": {
+    "description": "更新日志获取范围（大版本）",
+    "type": "int",
+    "hint": "hero/item 模板展示改动历史的大版本数量，范围 1–5。",
+    "default": 2
+  },
+  "render_scale": {
+    "description": "渲染清晰度",
+    "type": "string",
+    "hint": "图片设备缩放级别。",
+    "default": "high",
+    "options": [
+      "normal",
+      "high",
+      "ultra"
+    ],
+    "labels": [
+      "标准",
+      "高",
+      "超高"
+    ]
+  },
+  "render_image_type": {
+    "description": "图片格式",
+    "type": "string",
+    "default": "png",
+    "options": [
+      "png",
+      "jpeg"
+    ]
+  },
+  "render_jpeg_quality": {
+    "description": "JPEG 质量",
+    "type": "int",
+    "hint": "10–100，仅 jpeg 时生效。",
+    "default": 90
+  }
+}

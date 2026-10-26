@@ -1,0 +1,90 @@
+{#- Port of old/src/templates/match/match_2+/charts.ejs; coordinates come from view["charts"]. -#}
+{% set c = charts %}
+<div id="charts">
+  <svg width="{{ c.svgWidth }}" height="{{ c.svgHeight }}" xmlns="http://www.w3.org/2000/svg">
+    <text x="50%" y="30" text-anchor="middle" font-size="16" font-weight="bold">{{ t("dota2tracker.template.situation") }}</text>
+    <image x="{{ c.padding }}" y="{{ c.padding }}" width="20" height="20" href="{{ img('logo_radiant') }}"/>
+    <image x="{{ c.padding }}" y="{{ c.direLogoY }}" width="20" height="20" href="{{ img('logo_dire') }}"/>
+    <text x="{{ c.padding + 20 }}" y="{{ c.radiantTextY }}" dominant-baseline="middle" fill="#3c9028">{{ t("dota2tracker.template.radiant") }}</text>
+    <text x="{{ c.padding + 20 }}" y="{{ c.direTextY }}" dominant-baseline="middle" fill="#9c3628">{{ t("dota2tracker.template.dire") }}</text>
+
+    {% for g in c.grid %}
+      <line x1="{{ c.padding }}" y1="{{ g.y }}" x2="{{ c.chartRight }}" y2="{{ g.y }}" stroke="gray" stroke-width="1" />
+      <text x="{{ c.padding - 2 }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle" fill="#333a">{{ g.value }}</text>
+    {% endfor %}
+
+    {% for lbl in c.timeLabels %}
+      <line x1="{{ lbl.x }}" y1="{{ c.padding }}" x2="{{ lbl.x }}" y2="{{ c.chartBottom }}" stroke="lightgray" stroke-width="1" />
+      {% if lbl.showText %}
+      <text x="{{ lbl.x }}" y="{{ c.chartBottom + 15 }}" text-anchor="middle" fill="#333a">{{ lbl.text }}</text>
+      {% endif %}
+    {% endfor %}
+
+    <line x1="{{ c.chartRight }}" y1="{{ c.padding }}" x2="{{ c.chartRight }}" y2="{{ c.chartBottom }}" stroke="lightgray" stroke-width="1" />
+    <text x="{{ c.chartRight }}" y="{{ c.chartBottom + 15 }}" text-anchor="middle" fill="#333a">{{ c.endLabel }}</text>
+
+    {% if c.wrPoints %}
+      <polyline points="{{ c.wrPoints }}" fill="none" stroke="lightgreen" stroke-width="3" />
+    {% endif %}
+
+    <polyline points="{{ c.secPoints }}" fill="none" stroke="gray" stroke-width="1" />
+    <polygon points="{{ c.secPoly }}" fill="rgba(128, 128, 128, 0.3)" />
+
+    <polyline points="{{ c.mainPoints }}" fill="none" stroke="rgba(100, 100, 100, 0.3)" stroke-width="2" />
+    <polygon points="{{ c.upper }}" fill="rgba(0, 255, 0, 0.3)" />
+    <polygon points="{{ c.lower }}" fill="rgba(255, 0, 0, 0.3)" />
+
+    <g transform="translate({{ c.padding }}, {{ c.legendY }})">
+      <g transform="translate(0, 0)">
+        <path d="M0,5 Q5,0 10,5 Z" fill="rgba(0, 255, 0, 0.5)"/>
+        <path d="M10,5 Q15,10 20,5 Z" fill="rgba(255, 0, 0, 0.5)"/>
+        <path d="M0,5 Q5,0 10,5 T20,5" fill="none" stroke="rgba(100, 100, 100, 0.3)" stroke-width="1"/>
+        <text x="30" y="7" font-size="12"{% if odParsed %} fill="#ccc"{% endif %}>
+          {{ t("dota2tracker.template.opendota.gold_t") if odParsed else t("dota2tracker.template.networth") }}
+        </text>
+      </g>
+      <g transform="translate(120, 0)">
+        <path d="M0,5 Q5,0 10,5 T20,5" fill="none" stroke="gray" stroke-width="1"/>
+        <text x="30" y="7" font-size="12">{{ t("dota2tracker.template.experience") }}</text>
+      </g>
+      <g transform="translate(220, 0)">
+        <path d="M0,5 Q5,0 10,5 T20,5" fill="none" stroke="lightgreen" stroke-width="3"/>
+        <text x="30" y="7" font-size="12">{{ t("dota2tracker.template.winrate") }}</text>
+      </g>
+    </g>
+  </svg>
+
+  <svg width="{{ c.svgWidth }}" height="{{ c.svgHeight }}" xmlns="http://www.w3.org/2000/svg">
+    {% if odParsed %}
+      <text x="50%" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#ccc">{{ t("dota2tracker.template.opendota.networth_unavailable") }}</text>
+      <text x="50%" y="{{ c.unavailableY }}" text-anchor="middle" font-size="12" fill="#ccc">{{ t("dota2tracker.template.opendota.networth_unavailable_reason") }}</text>
+    {% else %}
+      <text x="50%" y="30" text-anchor="middle" font-size="16" font-weight="bold">{{ t("dota2tracker.template.networth") }}</text>
+
+      {% for g in c.grid %}
+        <line x1="{{ c.padding }}" y1="{{ g.y }}" x2="{{ c.chartRight }}" y2="{{ g.y }}" stroke="gray" stroke-width="1" />
+        <text x="{{ c.padding - 2 }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle" fill="#333a">{{ g.nw }}</text>
+      {% endfor %}
+
+      {% for lbl in c.timeLabels %}
+        <line x1="{{ lbl.x }}" y1="{{ c.padding }}" x2="{{ lbl.x }}" y2="{{ c.chartBottom }}" stroke="lightgray" stroke-width="1" />
+        {% if lbl.showText %}
+        <text x="{{ lbl.x }}" y="{{ c.chartBottom + 15 }}" text-anchor="middle" fill="#333a">{{ lbl.text }}</text>
+        {% endif %}
+      {% endfor %}
+      <line x1="{{ c.chartRight }}" y1="{{ c.padding }}" x2="{{ c.chartRight }}" y2="{{ c.chartBottom }}" stroke="lightgray" stroke-width="1" />
+      <text x="{{ c.chartRight }}" y="{{ c.chartBottom + 15 }}" text-anchor="middle" fill="#333a">{{ c.endLabel }}</text>
+
+      {% for line in c.playerLines %}
+        <polyline points="{{ line.points }}" fill="none" stroke="{{ line.color }}" stroke-width="2" />
+      {% endfor %}
+
+      <g transform="translate({{ c.legendX }}, {{ c.legendTop }})">
+        {% for item in c.legend %}
+          <rect x="{{ item.x }}" y="0" width="24" height="24" rx="6" ry="6" fill="#f0f0f0" stroke="{{ item.color }}" stroke-width="3" />
+          <image x="{{ item.x }}" y="0" width="24" height="24" href="{{ item.icon }}" clip-path="inset(0 round 6)" />
+        {% endfor %}
+      </g>
+    {% endif %}
+  </svg>
+</div>

@@ -1,0 +1,58 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+/build/
+/dist/
+*.whl
+
+# ---- Virtual environments ----
+.venv*/
+venv/
+env/
+
+# ---- Tooling caches ----
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.coverage
+.coverage.*
+htmlcov/
+/tests/.artifacts/
+
+# ---- Runtime data (belongs in AstrBot data/plugin_data/, never in the repo) ----
+# AstrBot creates data/ under its root (the cwd when run from here).
+/data/
+*.sqlite3
+*.sqlite3-*
+*.db
+*.log
+
+# ---- Local preview / render output ----
+*.png.html
+/render-out/
+/previews/
+
+# ---- Release packaging ----
+*.zip
+
+# ---- Archived Koishi project (reference only) ----
+old/
+
+
+# ---- Editors / OS ----
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# ---- Secrets ----
+.env
+.env.*
+
+/AGENTS.md
+/DEVELOPMENT.md

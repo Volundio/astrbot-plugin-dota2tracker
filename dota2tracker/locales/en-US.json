@@ -1,0 +1,546 @@
+{
+  "dota2tracker": {
+    "heroes_nicknames": {
+      "0": "Please strictly follow the format of \"\", \"\" when filling out, if the format is incorrect, only the default name of the hero will be used. The default name of the hero may be omitted.",
+      "1": "\"Anti-Mage\"",
+      "2": "\"Axe\"",
+      "3": "\"Bane\"",
+      "4": "\"Bloodseeker\"",
+      "5": "\"Crystal Maiden\"",
+      "6": "\"Drow Ranger\"",
+      "7": "\"Earthshaker\"",
+      "8": "\"Juggernaut\"",
+      "9": "\"Mirana\"",
+      "10": "\"Morphling\"",
+      "11": "\"Shadow Fiend\"",
+      "12": "\"Phantom Lancer\"",
+      "13": "\"Puck\"",
+      "14": "\"Pudge\"",
+      "15": "\"Razor\"",
+      "16": "\"Sand King\"",
+      "17": "\"Storm Spirit\"",
+      "18": "\"Sven\"",
+      "19": "\"Tiny\"",
+      "20": "\"Vengeful Spirit\"",
+      "21": "\"Windranger\"",
+      "22": "\"Zeus\"",
+      "23": "\"Kunkka\"",
+      "25": "\"Lina\"",
+      "26": "\"Lion\"",
+      "27": "\"Shadow Shaman\"",
+      "28": "\"Slardar\"",
+      "29": "\"Tidehunter\"",
+      "30": "\"Witch Doctor\"",
+      "31": "\"Lich\"",
+      "32": "\"Riki\"",
+      "33": "\"Enigma\"",
+      "34": "\"Tinker\"",
+      "35": "\"Sniper\"",
+      "36": "\"Necrophos\"",
+      "37": "\"Warlock\"",
+      "38": "\"Beastmaster\"",
+      "39": "\"Queen of Pain\"",
+      "40": "\"Venomancer\"",
+      "41": "\"Faceless Void\"",
+      "42": "\"Wraith King\"",
+      "43": "\"Death Prophet\"",
+      "44": "\"Phantom Assassin\"",
+      "45": "\"Pugna\"",
+      "46": "\"Templar Assassin\"",
+      "47": "\"Viper\"",
+      "48": "\"Luna\"",
+      "49": "\"Dragon Knight\"",
+      "50": "\"Dazzle\"",
+      "51": "\"Clockwerk\"",
+      "52": "\"Leshrac\"",
+      "53": "\"Nature's Prophet\"",
+      "54": "\"Lifestealer\"",
+      "55": "\"Dark Seer\"",
+      "56": "\"Clinkz\"",
+      "57": "\"Omniknight\"",
+      "58": "\"Enchantress\"",
+      "59": "\"Huskar\"",
+      "60": "\"Night Stalker\"",
+      "61": "\"Broodmother\"",
+      "62": "\"Bounty Hunter\"",
+      "63": "\"Weaver\"",
+      "64": "\"Jakiro\"",
+      "65": "\"Batrider\"",
+      "66": "\"Chen\"",
+      "67": "\"Spectre\"",
+      "68": "\"Ancient Apparition\"",
+      "69": "\"Doom\"",
+      "70": "\"Ursa\"",
+      "71": "\"Spirit Breaker\"",
+      "72": "\"Gyrocopter\"",
+      "73": "\"Alchemist\"",
+      "74": "\"Invoker\"",
+      "75": "\"Silencer\"",
+      "76": "\"Outworld Devourer\"",
+      "77": "\"Lycan\"",
+      "78": "\"Brewmaster\"",
+      "79": "\"Shadow Demon\"",
+      "80": "\"Lone Druid\"",
+      "81": "\"Chaos Knight\"",
+      "82": "\"Meepo\"",
+      "83": "\"Treant Protector\"",
+      "84": "\"Ogre Magi\"",
+      "85": "\"Undying\"",
+      "86": "\"Rubick\"",
+      "87": "\"Disruptor\"",
+      "88": "\"Nyx Assassin\"",
+      "89": "\"Naga Siren\"",
+      "90": "\"Keeper of the Light\"",
+      "91": "\"Io\"",
+      "92": "\"Visage\"",
+      "93": "\"Slark\"",
+      "94": "\"Medusa\"",
+      "95": "\"Troll Warlord\"",
+      "96": "\"Centaur Warrunner\"",
+      "97": "\"Magnus\"",
+      "98": "\"Timbersaw\"",
+      "99": "\"Bristleback\"",
+      "100": "\"Tusk\"",
+      "101": "\"Skywrath Mage\"",
+      "102": "\"Abaddon\"",
+      "103": "\"Elder Titan\"",
+      "104": "\"Legion Commander\"",
+      "105": "\"Techies\"",
+      "106": "\"Ember Spirit\"",
+      "107": "\"Earth Spirit\"",
+      "108": "\"Underlord\"",
+      "109": "\"Terrorblade\"",
+      "110": "\"Phoenix\"",
+      "111": "\"Oracle\"",
+      "112": "\"Winter Wyvern\"",
+      "113": "\"Arc Warden\"",
+      "114": "\"Monkey King\"",
+      "119": "\"Dark Willow\"",
+      "120": "\"Pangolier\"",
+      "121": "\"Grimstroke\"",
+      "123": "\"Hoodwink\"",
+      "126": "\"Void Spirit\"",
+      "128": "\"Snapfire\"",
+      "129": "\"Mars\"",
+      "131": "\"Ring Master\"",
+      "135": "\"Dawnbreaker\"",
+      "136": "\"Marci\"",
+      "137": "\"Primal Beast\"",
+      "138": "\"Muerta\"",
+      "145": "\"Kez\"",
+      "155": "\"Largo\""
+    },
+    "broadcast": {
+      "WIN_NEGATIVE": "\"Won the match by sheer luck\", \"Won the match by a stroke of bad luck\", \"Coasted to victory\", \"Didn't even show up for the team fight, but my teammates won 4v5\"",
+      "WIN_POSITIVE": "\"Led the team to victory\", \"Dominated the opponents and secured the win\", \"Carried the game to victory\", \"Treated the opponents like pigs and won\", \"Won again; this game is just so monotonous and dull\", \"Simply achieved a win in the match\"",
+      "LOSE_NEGATIVE": "\"Got crushed and lost the match\", \"Lost the match miserably\", \"Got my head knocked sideways and lost the match with a blown mindset\", \"Went fishing but got eaten by the fish, lost the match\", \"Played terribly\", \"Simply suffered a loss in the match\"",
+      "LOSE_POSITIVE": "\"Lost the match with no way to turn it around\", \"Gave it my all, but still lost the match\", \"Though we lost, we still have honor\", \"Couldn't carry my teammates, lost the match\", \"Lost again, it hurts; I'd rather it be me losing\"",
+      "message": "{name}'s {hero_name} {comment}.\nKDA: {kda}, GPM/XPM: {gpm_xpm}, Last Hits/Denies: {lh_dn}, Damage/Tower Damage: {damage}, Kill/Death Contribution Rate: {kc_dc}",
+      "rank_changed": "Player {name} rank changed: {prev.medal} {prev.star} → {curr.medal} {curr.star}"
+    },
+    "logger": {
+      "fetch_guilds_failed": "Failed to fetch guild information.",
+      "match_tracked": "Tracked new match {match.id} from {#each messageToLogger as item}users in guild {item.platform}:{item.guildId} [{#each item.players as player}{player.nickname}({player.steamId}){#if player !== item.players[item.players.length - 1]}, {/if}{/each}]{#if item !== messageToLogger[messageToLogger.length - 1]}, {/if}{/each}.",
+      "parse_request_sent": "The parsing request for match {matchId} has been successfully sent to the STRATZ server.",
+      "parse_request_failed": "The parsing request for match {matchId} failed to send.",
+      "match_parsed": "Match {matchId} has been parsed{#if odParsed} by OpenDota{/if}, an image was generated and published to {#each guilds as guild}{guild.platform}:{guild.guildId}{#if guild !== guilds[guilds.length - 1]}, {/if}{/each}.",
+      "match_unparsed": "Match {matchId} exceeded the waiting time [{timeout}] and remains unparsed, an image was generated and published to {#each guilds as guild}{guild.platform}:{guild.guildId}{#if guild !== guilds[guilds.length - 1]}, {/if}{/each}.",
+      "waiting_for_parse": "Match {matchId} has not been parsed yet, has been waiting for {time} minutes.",
+      "report_sent": "Posted {title} on {platform}:{guildId}.",
+      "rank_sent": "Posted rank change information of {player.nickName} ({player.steamId}) on {platform}:{guildId}.",
+      "ejs_error": "Error rendering EJS template: {error}",
+      "cron_not_enabled": "Cron service is not enabled; match report tracking cannot run.",
+      "stratz_token_banned": "Stratz API request rejected (403). This usually means your token or IP has been temporarily restricted due to unusual activity. For details, see the documentation: http://sjtdev.github.io/koishi-plugin-dota2tracker/en-US/api-403.html",
+      "opendota_token_banned": "OpenDota API request rejected (403). Please check if the access limit has been exceeded.",
+      "stratz_api_query_error": "Stratz API returned partial data with errors: {cause}",
+      "opendota_parse_request_sent": "Parse request for match {matchId} has been sent to OpenDota servers successfully.",
+      "opendota_parse_request_failed": "Failed to send parse request for match {matchId} to OpenDota servers.",
+      "font_loaded": "Font directory changed: {filename} ({eventType}), reloading font list..."
+    },
+    "time": {
+      "years_months_ago": "{years} years and {months} months ago",
+      "years_ago": "{years} years ago"
+    },
+    "template": {
+      "radiant": "Radiant",
+      "dire": "Dire",
+      "won": "Won",
+      "lost": "Lost",
+      "match_id_": "Match ID: {0}",
+      "game_mode_": "Mode: {0}",
+      "start_time_": "Start Time: {0}",
+      "end_time_": "End Time: {0}",
+      "pick_order": "#{0}",
+      "random": "R",
+      "hero_damage_": "Damage: {0}",
+      "building_damage_": "Building: {0}",
+      "damage_received_": "Received: {0}",
+      "lasthit_": "LastHit: {0}",
+      "deny_": "Deny: {0}",
+      "lh/dn_": "LH/DN: {0}",
+      "GPM": "GPM",
+      "XPM": "XPM",
+      "heal_": "Heal: {0}",
+      "crowd_control_duration_": "CCD: {0}",
+      "GPM/XPM_": "GPM/XPM: {0}",
+      "lane": "Lane",
+      "lane_": "Lane: ",
+      "lane_advantage": "Lane +",
+      "lane_disadvantage": "Lane -",
+      "lane_jungle": "Jungle",
+      "lane_stomp": "Lane+++",
+      "lane_stomped": "Lane---",
+      "lane_tie": "Lane ==",
+      "analysis_successful": "Analysis successful",
+      "analysis_incomplete": "Analysis incomplete",
+      "analysis_by_opendota": "Analysis by OpenDota",
+      "kill": "Kill",
+      "kill_contribution_": "KC: {0}",
+      "position": "Position",
+      "position_": "Position: ",
+      "position_1": "Carry",
+      "position_2": "Mid",
+      "position_3": "OffLane",
+      "position_4": "Softsup",
+      "position_5": "Hardsup",
+      "dire_won": "Dire Won",
+      "radiant_won": "Radiant Won",
+      "total_damage": "Damage",
+      "total_experience": "Exp.",
+      "total_gold": "Gold",
+      "region_": "Region: {0}",
+      "duration_": "Duration: {0}",
+      "position_undefined": "?",
+      "top10_": "Top 10 Heroes by Matches: ",
+      "match_count_": "Matches: ",
+      "last25matches_": "Last 25 Matches: ",
+      "winrate_": "Winrate: ",
+      "imp_": "IMP: ",
+      "lane_advantage_rate_": "Lane Advantage Rate: ",
+      "hero": "Hero",
+      "all_matches_": "All Matches: ",
+      "match_count": "Matches",
+      "winrate": "Winrate",
+      "imp": "IMP",
+      "win_count": "Wins",
+      "lose_count": "Losses",
+      "recently_heroes": "Heroes used more than once recently: ",
+      "recently_positions": "Performance in the last 25 matches across all positions: ",
+      "winning_streak": "Winning Streak",
+      "losing_streak": "Losing Streak",
+      "id": "ID",
+      "mode": "Mode",
+      "kda_kc": "KDA(KC)",
+      "time": "Time",
+      "duration": "Duration",
+      "rank": "Rank",
+      "un_parsed": "(Unparsed)",
+      "combined_win_loss_summary": "Combined Win/Loss Summary: ",
+      "yesterdays_summary": "Yesterday's Summary",
+      "last_weeks_summary": "Last Week's Summary",
+      "report_won": "W",
+      "report_lost": "L",
+      "report_winrate": "WR",
+      "anonymous_player_1": "This profile is private.",
+      "anonymous_player_2": "Background is for display purposes only. It is not {player}’s data.",
+      "rank_fun_down_message": "AVATAR_PLACEHOLDER<br/>Sad",
+      "rank_fun_up_message": "Hip hip hooray! Our awesome member AVATAR_PLACEHOLDER{name} has leveled up from PREV_PLACEHOLDER to CURR_PLACEHOLDER!",
+      "titles": {
+        "MVP": "MVP-#FFA500",
+        "Soul": "Soul-#66CCFF",
+        "Rich": "Rich-#FFD700",
+        "Wise": "Wise-#8888FF",
+        "Controller": "Controller-#FF00FF",
+        "Nuker": "Nuker-#CC0088",
+        "Breaker": "Breaker-#DD0000",
+        "Ghost": "Ghost-#CCCCCC",
+        "Utility": "Utility-#20B2AA",
+        "Assister": "Assister-#006400",
+        "Demolisher": "Demolisher-#FEDCBA",
+        "Healer": "Healer-#00FF00",
+        "Tank": "Tank-#84A1C7",
+        "Idle": "Idle-#DDDDDD"
+      },
+      "situation": "Situation",
+      "networth": "Net Worth",
+      "experience": "Experience",
+      "OUTCOME_MAP": {
+        "RADIANT_VICTORY": "RADIANT VICTORY",
+        "RADIANT_STOMP": "RADIANT STOMP",
+        "DIRE_VICTORY": "DIRE VICTORY",
+        "DIRE_STOMP": "DIRE STOMP",
+        "TIE": "TIE"
+      },
+      "lane_top": "Top",
+      "lane_mid": "Mid",
+      "lane_bottom": "Bottom",
+      "empty_extra_info": "No extra info",
+      "opendota": {
+        "networth_unavailable": "Net Worth Chart Unavailable",
+        "networth_unavailable_reason": "Data source OpenDota does not provide per-minute net worth data.",
+        "lane_outcome_tip": "(Based on gold earned, not net worth; ref only.)",
+        "gold_t": "Gold Earned"
+      },
+      "report": {
+        "daily": {
+          "plugin_name": "AstrBot Dota 2 Plugin",
+          "title": "Daily Group Recap",
+          "meta": {
+            "date_format": "cccc, LLLL d, yyyy",
+            "summary": "Performance summary for {0}.",
+            "footer_format": "ID: #{0} • Server: {1}"
+          },
+          "stats": {
+            "matches": "Matches",
+            "win_rate": "Win Rate",
+            "kills": "Total Kills",
+            "duration": "Duration",
+            "avg_time": "Avg",
+            "matches_subtext": "{0} W - {1} L",
+            "vs_yesterday": "vs Yesterday",
+            "kills_avg": "Avg {0}"
+          },
+          "spotlight": {
+            "mvp_title": "The King",
+            "lvp_title": "The Suspect",
+            "utility_title": "Selfless Devotion",
+            "healer_title": "The Lifesaver",
+            "demolisher_title": "Demolition Master",
+            "default_title": "Ordinary Day",
+            "score_label": "MVP Score",
+            "utility_score_label": "Support Contribution",
+            "healer_score_label": "Healing",
+            "demolisher_score_label": "Tower Damage",
+            "default_label": "No special highlights today"
+          },
+          "squad": {
+            "title": "Performance",
+            "subtitle": "Ranked by Score",
+            "header": {
+              "rank": "Rank",
+              "player_info": "Player Info",
+              "hero_pool": "Hero Pool (Sorted by Wins)",
+              "kda": "KDA Ratio",
+              "score": "Score",
+              "impact": "Impact"
+            },
+            "impact": {
+              "dmg": "Dmg",
+              "gold": "Gold"
+            }
+          },
+          "footer": {
+            "generated_by": "Generated by Koishi Bot"
+          }
+        }
+      },
+      "generated_at": "Generated at"
+    },
+    "platform_unsupported": "Dota2 Tracker is not available on this platform."
+  },
+  "commands": {
+    "dota2tracker": {
+      "description": "A series of commands for Dota 2 Tracker. Use dota2tracker -h to see all available commands, or use dota2tracker.help to see a detailed description of all commands.",
+      "subscribe": {
+        "description": "Subscribes the current channel to Dota 2 match tracking.",
+        "usage": "After subscribing, players need to bind their Steam ID in this channel. The bot will then track new matches of bound players and post image-based reports upon completion of parsing by Stratz.",
+        "examples": "subscribe",
+        "messages": {
+          "subscribe_success": "Subscription successful.",
+          "subscribed": "This Channel has been subscribed, no need to subscribe again."
+        }
+      },
+      "unsubscribe": {
+        "description": "Unsubscribes the current channel from match tracking.",
+        "usage": "Unsubscribes the current channel from match tracking.",
+        "examples": "unsubscribe",
+        "messages": {
+          "unsubscribe_success": "Unsubscription successful.",
+          "not_subscribed": "This Channel has not been subscribed yet, so there is no need to unsubscribe."
+        }
+      },
+      "bind": {
+        "description": "Binds your SteamID to your account in the current channel.",
+        "usage": "Bind your SteamID to your account. If the channel is subscribed, your new match data will be posted automatically. Nicknames containing spaces must be enclosed in double quotes (\"\").",
+        "examples": "bind 123456789\nbind 123456789 John\nbind 123456789 \"John Doe\"",
+        "messages": {
+          "steam_id_invalid": "Invalid SteamID.",
+          "bind_success": "Binding successful,\nID: {userId}\nNickname: {nickName}\nSteamID: {steamId}",
+          "bind_failed": "Binding failed, {0}",
+          "reason_without_match": "Invalid SteamID or no matches found.",
+          "reason_fetch_failed": "Poor network conditions or other reasons prevented the verification of the SteamID. Please try again later.",
+          "already_binded": "You are already bound, no need to bind again.\nHere is your personal information:\nID: {userId}\nNickname: {nickName}\nSteamID: {steamId}",
+          "nick_name_too_long": "Nickname is too long, please limit it to 20 characters or less. (It can also be left blank)",
+          "is_anonymous": "Please note: Your Steam player data is not public, and you will not be able to use the main functions of the BOT, such as \"battle report tracking,\" \"query-recent-match commands,\" etc.\nIf you need to make data public, please set it to public in the DOTA2 game settings."
+        }
+      },
+      "unbind": {
+        "description": "Unbinds your personal information in the current channel.",
+        "usage": "Unbind your personal information in the current channel.",
+        "examples": "unbind",
+        "messages": {
+          "unbind_success": "Unbinding successful.",
+          "not_binded": "Not bound, no need to unbind."
+        }
+      },
+      "rename": {
+        "description": "Changes the nickname set during binding.",
+        "usage": "Change the nickname set during binding. Nicknames containing spaces must be enclosed in double quotes (\"\").",
+        "examples": "rename John\nrename \"John Doe\"",
+        "messages": {
+          "rename_success": "Rename successful, now you are called {nick_name}.",
+          "empty_input": "Please enter your nickname.",
+          "not_binded": "Please bind first, you can set a nickname during binding.",
+          "nick_name_too_long": "Nickname is too long, please limit it to 20 characters.",
+          "nick_name_same": "The input content is the same as the original nickname and does not need to be renamed."
+        }
+      },
+      "query-members": {
+        "description": "Queries the players bound in this channel and generates an info image.",
+        "usage": "Queries the players bound in this channel and generates an informational image.",
+        "examples": "query-members",
+        "messages": {
+          "title": "Guild DOTA 2 Roster (Total: {count})",
+          "table_headers": {
+            "nickname": "Nickname",
+            "winrate": "Win Rate (L10)",
+            "last_match": "Last Match"
+          },
+          "no_members": "No players bound in this group.",
+          "query_failed": "Failed to query group members."
+        }
+      },
+      "query-match": {
+        "description": "Query the match data of the specified match ID and generate a picture.",
+        "usage": "Query the match data of the specified match ID and generate a picture.",
+        "options": {
+          "parse": "Whether to wait for match data parsing"
+        },
+        "examples": "query-match 1234567890\nquery-match 1234567890 -p\nquery-match 1234567890 --parse",
+        "messages": {
+          "empty_input": "Please enter the match ID.",
+          "match_id_invalid": "Invalid match ID.",
+          "querying_match": "Searching for match details, please wait...",
+          "query_failed": "Failed to get match data.",
+          "waiting_for_parse": "Match data has not been parsed yet, a parse request has been sent to the server. The battle report will be sent once parsing is complete or times out."
+        }
+      },
+      "query-recent-match": {
+        "description": "Query the most recent match data and generate a picture.",
+        "options": {
+          "parse": "Whether to wait for match data parsing"
+        },
+        "usage": "Query the most recent match data of the specified player and generate a picture.\nThe parameter can be the player's SteamID or the nickname of a player bound in this group. If no parameter is provided, it will try to query the SteamID of the command caller.",
+        "examples": "query-recent-match\nquery-recent-match 123456789\nquery-recent-match John\nquery-recent-match 123456789 -p\nquery-recent-match John --parse",
+        "messages": {
+          "querying_match": "Searching for match details, please wait...",
+          "query_failed": "Failed to get the player's recent match.",
+          "is_anonymous": "Your player data is not public, and recent match data cannot be obtained.\nIf you need to make data public, please set it to public in the DOTA2 game settings."
+        }
+      },
+      "query-player": {
+        "description": "Query the player's personal information, optionally specify a hero.",
+        "options": {
+          "hero": "Query the player's usage of the specified hero (same as querying a hero, can use nickname or ID)"
+        },
+        "usage": "Query the personal information of the specified player and generate a picture, optionally specify a hero.\nThe parameter can be the player's SteamID or the nickname of a player bound in this group. If no parameter is provided, it will try to query the SteamID of the command caller.",
+        "examples": "query-player\nquery-player 123456789\nquery-player John\nquery-player John --hero Anti-Mage\nquery-player John -o Anti-Mage",
+        "messages": {
+          "querying_player": "Retrieving player data, please wait...",
+          "query_failed": "Failed to get player information."
+        }
+      },
+      "query-hero": {
+        "description": "Query hero skills/stats information.",
+        "options": {
+          "random": "Randomly select a hero."
+        },
+        "usage": "Query the hero's skill descriptions and various stats, generate a picture.\nThe parameter can be the hero's ID, name, or common nickname.",
+        "examples": "query-hero 15\nquery-hero Razor\nquery-hero -r",
+        "messages": {
+          "not_found": "Hero not found, please confirm and re-enter.",
+          "querying_hero": "Retrieving hero data, please wait...",
+          "fetching_patch_notes": "Fetching hero patch notes and building cache, please wait...",
+          "query_failed": "Failed to get hero data.",
+          "empty_input": "Please enter a parameter."
+        }
+      },
+      "query-item": {
+        "description": "Query item information",
+        "usage": "Query item descriptions and attributes, then generate and publish an image report.\nParameters can be item name (supports fuzzy search), item alias, or item ID.\nYou can set the maximum number of items to send per query on the configuration page, as well as whether to send the item list when the limit is exceeded or parameters are not entered.",
+        "examples": "query-item Vanguard",
+        "messages": {
+          "query_list_failed": "Failed to retrieve item list data",
+          "query_item_failed": "Failed to retrieve data for item '{0}'",
+          "querying_item": "Querying item data, please wait...",
+          "cache_building": "Initializing or rebuilding item cache for the current version, please wait...",
+          "empty_input": "No keywords provided. \n{#if show}Displaying full item list per current configuration\n{:else}No content available\n{/if}",
+          "not_found": "No items found matching the keywords, please verify and retry",
+          "too_many_items": "Found {count} items, exceeding maximum display limit ({max} items)\n{#if show}(Displaying item list){/if}",
+          "finded_items": "Matching items: \n{#each items as item}\n{item.name_loc}{#if item !== items[items.length - 1]}, {/if}\n{/each}"
+        }
+      },
+      "hero-of-the-day": {
+        "description": "Get hero recommendations for the day.",
+        "usage": "Fetches recent and lifetime match history to recommend heroes based on parameters like wins, performance score, and hot streaks.\nThe parameter can be a player's SteamID or the nickname of a player bound in this group. If no parameter is provided, it will try to look up the command caller's SteamID.",
+        "options": {
+          "days": "-d <number> The range of recent days to consider, default is 30."
+        },
+        "examples": "hero-of-the-day\nhero-of-the-day -d 60\nhero-of-the-day 1234567890\nhero-of-the-day \"John Doe\"",
+        "messages": {
+          "title_recommendation": "Today's Recommendation:",
+          "recommendation_intro": "The recommended heroes for you today are:",
+          "recommendation_heroes": "{#each heroes as hero}{hero}{#if hero !== heroes[heroes.length - 1]}, {/if}{/each}",
+          "recommendation_type_lifetime_only": "Your recent match history is empty. This recommendation is based on your lifetime statistics.",
+          "recommendation_type_no_record": "Recommendations cannot be generated due to a lack of recent and lifetime match data.",
+          "recommendation_type_anonymous": "Recommendations cannot be generated because your profile data is private.",
+          "details": {
+            "pool_description": "The recommendation is generated by scoring your recent and lifetime hero performance, sorting by total score, and then randomly selecting from the top 10 heroes weighted by their scores.",
+            "table_intro": "Below is the detailed score breakdown for the top 10 heroes.",
+            "table_headers": {
+              "hero": "Hero",
+              "recent_wins": "Recent Wins Score",
+              "lifetime_wins": "Lifetime Wins<br>(Logarithmic)",
+              "imp_bonus": "IMP Bonus",
+              "is_hot_streak": "Hot Streak",
+              "total_score": "Total Score"
+            },
+            "scoring_formula": "Current Scoring Formula: [Recent Wins x 1] + [log(Lifetime Wins + 1) x 5] + [Recent IMP x 0.1]",
+            "hot_streak_desc": "If a hero was played in the last 3 days, it's considered a 'Hot Streak' hero, receiving a 20% bonus to its total score."
+          },
+          "title_meta": "Meta Trends:",
+          "meta_intro": "Top 3 advantage heroes for each position with a <b>pick rate ≥2%</b> within ±1 of your rank bracket ({tiers}) over the last week, sorted by win rate:",
+          "meta_table_header": "Hero (Pick% Win%)",
+          "meta_position": "Pos {pos}:",
+          "querying": "Retrieving player stats and hero win rates, please wait...",
+          "query_failed": "Command failed."
+        }
+      },
+      "common": {
+        "messages": {
+          "user_not_binded_in_channel": "By default, it tries to find your information from the bound SteamID players, but it seems you are not bound.\nPlease bind your SteamID in this group. (You can enter [bind -h] for help)\nOr follow the command with the SteamID or nickname of the player you want to query.",
+          "user_not_in_group": "Command failed.\nCurrently not in a group chat, you must provide the specified player's SteamID.",
+          "invalid_input_include_steam_id": "Invalid SteamID and the player was not found in this group by the given input.",
+          "platform_not_supported": "Subscriptions are not available on this platform ({platform})."
+        }
+      },
+      "help": {
+        "description": "Get detailed information for all commands and the link to the online documentation.",
+        "usage": "Get detailed information for all commands and the link to the online documentation.",
+        "examples": "help",
+        "messages": {
+          "header": "Below is the full list of plugin commands.\n※Note: <arg> is a required argument, and [arg] is an optional argument. Please see the 'Examples' column for specific usage.",
+          "footer": "For more information on plugin configuration, template showcases, and other details, please visit the online documentation:\nhttps://sjtdev.github.io/koishi-plugin-dota2tracker/en-US/",
+          "table_headers": {
+            "command": "Command",
+            "alias": "Alias",
+            "arguments": "Arguments",
+            "description": "Description",
+            "options": "Options",
+            "examples": "Examples"
+          }
+        }
+      }
+    }
+  }
+}

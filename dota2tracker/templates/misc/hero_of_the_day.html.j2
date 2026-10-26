@@ -1,0 +1,44 @@
+{#- Port of MessageBuilder.buildHeroOfTheDayMessage (old/src/app/presentation/message.builder.ts).
+    Rendered with a tiny viewport: max-content replaces fit-content, capped at 1280 - 2 * 12px. -#}
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>body{width:max-content;max-width:1256px;height:fit-content;margin:0;padding:12px;}</style>
+  </head>
+  <body>
+    {% if personalized %}
+    <h3>{{ titleRecommendation }}</h3>
+    <p>{{ intro }}</p>
+    <p><b>{{ heroes }}</b></p>
+    {% if lifetimeOnly %}<p style='color:#666'>{{ lifetimeOnly }}</p>{% endif %}
+    <p>{{ poolDescription }}</p>
+    <p>{{ tableIntro }}</p>
+    <div style="display: grid;grid-template-columns: repeat(6, auto);gap: 10px;text-align: center;align-items: center;">
+      <div style="display: contents">
+        {% for header in tableHeaders %}<div{% if loop.first %} style="text-align:left"{% endif %}>{{ header }}</div>{% endfor %}
+      </div>
+      {% for hero in pool %}
+      <div style="display: contents">
+        <div style="text-align:left">{{ hero.name }}</div>
+        <div>{{ hero.recentWinScore }}</div>
+        <div>{{ hero.lifetimeWinScore }}</div>
+        <div>{{ hero.impBonus }}</div>
+        <div>{{ hero.hotStreak }}</div>
+        <div>{{ hero.totalScore }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <p>{{ scoringFormula }}</p>
+    <p>{{ hotStreakDesc }}</p>
+    {% else %}
+    <p>{{ notice }}</p>
+    {% endif %}
+    <br>
+    <h3>{{ titleMeta }}</h3>
+    <p>{{ metaIntro }}</p>
+    <i style="font-size:12px;color:#333">{{ metaTableHeader }}</i>
+    {% for position in positions %}
+    <p>{{ position.label }}{{ position.heroes }}</p>
+    {% endfor %}
+  </body>
+</html>

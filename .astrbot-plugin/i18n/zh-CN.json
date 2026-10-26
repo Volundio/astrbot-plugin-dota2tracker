@@ -1,0 +1,461 @@
+{
+  "metadata": {
+    "display_name": "Dota2 战绩追踪",
+    "desc": "Dota2 对局追踪、战报图片、段位播报、日报周报与查询指令（移植自 koishi-plugin-dota2tracker）。"
+  },
+  "views": {
+    "common": {
+      "loading": "加载中…",
+      "empty": "暂无数据",
+      "error": "加载失败",
+      "retry": "重试",
+      "reload": "重新加载",
+      "confirm": "确认",
+      "confirmTitle": "请确认操作",
+      "cancel": "取消",
+      "save": "保存",
+      "never": "从未",
+      "enabled": "已启用",
+      "disabled": "未启用",
+      "configured": "已配置",
+      "missing": "未配置",
+      "running": "运行中",
+      "stopped": "已停止",
+      "onebotUnavailable": "部分频道所属平台已被禁用，这些频道不会收到推送。",
+      "level": {
+        "error": "错误",
+        "warning": "警告"
+      },
+      "locales": {
+        "zh-CN": "简体中文",
+        "en-US": "英语"
+      },
+      "errorCols": {
+        "time": "时间",
+        "source": "来源",
+        "type": "类型",
+        "message": "信息"
+      },
+      "errors": {
+        "unknown": "请求失败：{message}",
+        "invalid_param": "参数无效：{name}",
+        "internal_error": "服务器内部错误，请查看 AstrBot 日志。",
+        "channel_not_found": "频道不存在，可能已被删除。",
+        "player_not_found": "绑定记录不存在，可能已被解绑。",
+        "invalid_nickname": "昵称须为 1–20 个字符且不能换行。",
+        "invalid_locale": "不支持的语言。",
+        "invalid_variant": "不支持的预览变体。",
+        "invalid_id": "ID 无效。",
+        "template_not_found": "模板不存在。",
+        "unknown_target": "未知的检测目标。",
+        "unknown_namespace": "未知的缓存命名空间。",
+        "import_missing_file": "没有收到上传文件。",
+        "import_invalid_extension": "只能导入 .json 文件。",
+        "import_too_large": "文件超过 2 MB 上限。",
+        "import_invalid_json": "文件不是有效的 JSON。",
+        "import_invalid_format": "无法识别的文件格式：需要本插件导出的文件。"
+      },
+      "noPlatform": "没有正在运行的消息平台适配器，无法推送战报。",
+      "noOnebot": "未检测到 OneBot (aiocqhttp) 适配器：提示撤回、离群过滤、群名片/头像不可用，其余功能照常。"
+    },
+    "overview": {
+      "title": "运行概览",
+      "refresh": "刷新",
+      "refreshed": "已刷新成员缓存与状态",
+      "autoRefresh": "每 30 秒自动刷新",
+      "updatedAt": "更新于 {time}",
+      "noStratzToken": "尚未配置 Stratz API Token，查询与追踪功能不可用。",
+      "schedulerStopped": "调度器未运行，自动追踪与日报/周报暂停。",
+      "features": "功能开关",
+      "stratzToken": "Stratz Token",
+      "opendota": "OpenDota 回退",
+      "rankBroadcast": "段位播报",
+      "dailyReport": "日报",
+      "weeklyReport": "周报",
+      "scheduler": "调度器",
+      "state": "状态",
+      "startedAt": "启动时间",
+      "ticks": "调度次数",
+      "activeJobs": "运行中任务",
+      "lastDiscovery": "最近对局发现",
+      "lastPoll": "最近解析轮询",
+      "lastDaily": "最近日报",
+      "lastWeekly": "最近周报",
+      "counts": "数据统计",
+      "subscribedChannels": "已订阅频道",
+      "channels": "频道总数",
+      "players": "绑定玩家",
+      "pendingMatches": "待解析比赛",
+      "sentMatches": "已发送比赛",
+      "matchExtensions": "比赛扩展记录",
+      "memberCache": "成员缓存：{groups} 个群，{members} 名成员",
+      "openDotaCalls": "今日 OpenDota 调用：{count} 次",
+      "openDotaCallsDisabled": "OpenDota 回退未启用",
+      "rendererAndData": "渲染与静态数据",
+      "renders": "渲染次数",
+      "renderFailures": "渲染失败",
+      "lastRenderMs": "最近渲染耗时",
+      "lastRenderError": "最近渲染错误",
+      "constantsVersion": "常量版本",
+      "constantsSize": "常量规模",
+      "constantsSizeValue": "{heroes} 英雄 / {items} 物品 / {abilities} 技能",
+      "configIssues": "配置问题",
+      "pending": "等待解析的比赛",
+      "noPending": "当前没有等待解析的比赛",
+      "pendingCols": {
+        "matchId": "比赛 ID",
+        "requestTime": "请求时间",
+        "waiting": "已等待",
+        "subscribers": "订阅者"
+      },
+      "subscriberType": {
+        "CHANNEL": "群聊",
+        "PRIVATE": "私聊"
+      },
+      "subscriberSource": {
+        "AUTOMATIC": "自动追踪",
+        "COMMAND": "指令请求"
+      },
+      "minutes": "{n} 分钟",
+      "recentErrors": "最近错误",
+      "noErrors": "没有最近错误",
+      "upstream": "原项目：{url}（GPL-3.0）"
+    },
+    "subscriptions": {
+      "title": "订阅与绑定",
+      "filter": "搜索昵称、SteamID、用户或群",
+      "onlySubscribed": "仅显示已订阅",
+      "summary": "{channels} 个频道（{subscribed} 个已订阅），{players} 名绑定玩家",
+      "empty": "还没有任何频道或绑定。在群聊中使用订阅/绑定指令后会出现在这里。",
+      "noMatch": "没有符合筛选条件的频道",
+      "noPlayers": "该频道没有绑定玩家",
+      "subscribedBadge": "已订阅",
+      "notSubscribed": "未订阅",
+      "unsupported": "平台不受支持：{platform}",
+      "subscribe": "订阅",
+      "unsubscribe": "取消订阅",
+      "subscribed": "已订阅该频道",
+      "unsubscribed": "已取消订阅",
+      "confirmUnsubscribe": "确定取消订阅「{name}」？该频道将不再收到战报与播报，绑定记录会保留。",
+      "locale": "播报语言",
+      "localeDefault": "跟随全局设置",
+      "localeSaved": "已更新频道语言",
+      "cols": {
+        "nickname": "昵称",
+        "userId": "用户 ID",
+        "steamId": "SteamID",
+        "rank": "段位",
+        "inGroup": "群成员",
+        "updatedAt": "更新时间"
+      },
+      "member": "在群内",
+      "left": "不在群内",
+      "rankUnknown": "未知",
+      "rankValue": "{medal} {star} 星",
+      "rankImmortal": "冠绝一世",
+      "rankImmortalTop": "冠绝一世 #{n}",
+      "medals": {
+        "1": "先锋",
+        "2": "卫士",
+        "3": "中军",
+        "4": "统帅",
+        "5": "传奇",
+        "6": "万古流芳",
+        "7": "超凡入圣",
+        "8": "冠绝一世"
+      },
+      "rename": "改名",
+      "renamed": "昵称已更新",
+      "unbind": "解绑",
+      "unbound": "已解除绑定",
+      "confirmUnbind": "确定解除「{name}」（SteamID {steamId}）的绑定？",
+      "orphans": "无频道记录的绑定",
+      "orphansHint": "这些玩家所属的频道没有记录（例如从未订阅），不会参与播报。",
+      "transfer": "导入 / 导出",
+      "transferHint": "导出文件只包含频道、绑定与段位，不含任何 Token。导入仅支持本插件导出的文件，可用于备份恢复或迁移到另一个 AstrBot 实例；已存在的绑定不会被覆盖。",
+      "export": "导出 JSON",
+      "chooseFile": "选择导入文件…",
+      "preview": "预检导入",
+      "previewResult": "预检结果：新增频道 {channelsAdded}，跳过 {channelsSkipped}；新增绑定 {playersAdded}，跳过 {playersSkipped}。",
+      "importDone": "导入完成：新增频道 {channelsAdded}，跳过 {channelsSkipped}；新增绑定 {playersAdded}，跳过 {playersSkipped}。",
+      "nothingToImport": "没有需要导入的新数据",
+      "apply": "确认导入",
+      "confirmImport": "将新增 {channels} 个频道订阅和 {players} 个绑定，确定导入？",
+      "imported": "导入成功",
+      "bestEffort": "{platform}：通用兼容"
+    },
+    "templates": {
+      "title": "模板预览",
+      "empty": "没有可预览的模板",
+      "previewSettings": "预览设置",
+      "template": "模板",
+      "locale": "语言",
+      "variant": "变体",
+      "fixtureHint": "预览使用内置示例数据渲染，不会请求外部 API。",
+      "render": "渲染预览",
+      "rendering": "正在渲染…",
+      "preview": "预览",
+      "noPreview": "选择模板后点击「渲染预览」",
+      "previewAlt": "{name} 模板预览",
+      "kinds": {
+        "match": "比赛",
+        "player": "玩家",
+        "hero": "英雄",
+        "item": "物品",
+        "report": "报告",
+        "rank": "段位",
+        "misc": "其他"
+      },
+      "variants": {
+        "default": "默认",
+        "opendota": "OpenDota 数据",
+        "anonymous": "匿名玩家",
+        "hero": "指定英雄",
+        "recipe": "合成卷轴",
+        "down": "掉段",
+        "lifetime": "生涯数据",
+        "hideCombi": "隐藏组合"
+      },
+      "renderStats": "渲染统计",
+      "renderStatsValue": "{renders} 次，失败 {failures} 次",
+      "renderer": "渲染",
+      "systemFonts": "图片使用渲染服务（t2i）所在机器的系统默认字体，插件不内置、不嵌入字体。"
+    },
+    "diagnostics": {
+      "title": "诊断",
+      "download": "下载诊断包",
+      "runtime": "运行状态",
+      "schemaVersion": "数据库版本",
+      "countLabels": {
+        "channels": "频道",
+        "subscribed_channels": "已订阅频道",
+        "players": "绑定玩家",
+        "match_extensions": "比赛扩展记录",
+        "sent_matches": "已发送比赛",
+        "pending_matches": "待解析比赛"
+      },
+      "apiChecks": "API 连通性",
+      "targets": {
+        "stratz": "Stratz",
+        "valve": "Valve",
+        "opendota": "OpenDota"
+      },
+      "queue": "队列 {n}",
+      "queueDisabled": "未启用",
+      "check": "检测",
+      "checking": "检测中…",
+      "notChecked": "未检测",
+      "reachable": "可用",
+      "unreachable": "失败",
+      "confirmCheck": "将向 {target} 发送一次真实请求（会占用 API 额度并写入审计日志），继续？",
+      "configCheck": "配置校验",
+      "configOk": "配置校验通过",
+      "redactedConfig": "查看脱敏后的配置",
+      "cache": "缓存",
+      "cacheEmpty": "缓存为空",
+      "cacheCols": {
+        "namespace": "命名空间",
+        "entries": "条目",
+        "bytes": "大小",
+        "expired": "已过期"
+      },
+      "purgeExpired": "清理过期项",
+      "clear": "清除",
+      "confirmClear": "确定清除缓存命名空间「{namespace}」的全部条目？",
+      "confirmPurge": "确定清理所有已过期的缓存和发送标记？",
+      "cleared": "已清除 {n} 条",
+      "clearErrors": "清空",
+      "confirmClearErrors": "确定清空最近错误列表？",
+      "errorsCleared": "已清空最近错误",
+      "audit": "审计日志",
+      "auditEmpty": "暂无审计记录",
+      "auditCols": {
+        "time": "时间",
+        "actor": "操作者",
+        "action": "操作",
+        "detail": "详情"
+      },
+      "actions": {
+        "refresh": "刷新状态",
+        "subscribe": "订阅频道",
+        "unsubscribe": "取消订阅",
+        "set_locale": "设置语言",
+        "rename": "改名",
+        "unbind": "解绑",
+        "export": "导出",
+        "import": "导入",
+        "fonts_rescan": "扫描字体",
+        "api_check": "API 检测",
+        "clear_cache": "清除缓存",
+        "clear_errors": "清空错误",
+        "diagnostic_export": "下载诊断包"
+      }
+    }
+  },
+  "config": {
+    "stratz_api_token": {
+      "description": "STRATZ API Token（必填）",
+      "hint": "stratz.com 的 API TOKEN，可在 https://stratz.com/api 获取。未配置时无法查询，后台追踪不会启动。"
+    },
+    "data_parsing_timeout_minutes": {
+      "description": "等待比赛解析的时间（分钟）",
+      "hint": "超过等待时间仍未解析时直接生成战报。范围 0–1440。"
+    },
+    "proxy_address": {
+      "description": "代理地址",
+      "hint": "如 http://127.0.0.1:7890 或 socks5://host:port，不使用代理请留空。"
+    },
+    "suppress_api_network_errors": {
+      "description": "网络错误降级为 debug 日志",
+      "hint": "开启后 Stratz/OpenDota 的超时、断网等网络错误以 debug 级别输出（403 除外）。"
+    },
+    "enable_opendota_fallback": {
+      "description": "启用 OpenDota 备用数据源",
+      "hint": "Stratz 无可用结果时使用 OpenDota 作为战报追踪与查询比赛的备用数据源。"
+    },
+    "opendota_api_key": {
+      "description": "OpenDota API Key",
+      "hint": "OpenDota 付费订阅 API Key，免费用户请留空。"
+    },
+    "opendota_ip_stack": {
+      "description": "OpenDota IP 协议栈",
+      "hint": "访问 OpenDota 频繁失败时可强制使用 IPv4（配置代理时忽略）。",
+      "labels": [
+        "自动",
+        "强制 IPv4"
+      ]
+    },
+    "default_locale": {
+      "description": "默认语言",
+      "hint": "频道未单独设置语言时使用的运行时语言。",
+      "labels": [
+        "简体中文",
+        "English"
+      ]
+    },
+    "use_hero_nicknames": {
+      "description": "使用英雄别名",
+      "hint": "关闭后仅使用英雄正式名称。"
+    },
+    "url_in_message_type": {
+      "description": "消息中附带链接",
+      "hint": "可填写 match（比赛/战报附带 Stratz 比赛链接）、player（玩家附带 Stratz 玩家链接）、hero（英雄附带刀塔百科链接）。",
+      "labels": [
+        "比赛",
+        "玩家",
+        "英雄"
+      ]
+    },
+    "max_send_item_count": {
+      "description": "最大发送物品图片数量",
+      "hint": "查询物品结果超过该数量时由下一项决定是否发送物品列表图片。范围 1–10。"
+    },
+    "show_item_list_at_too_much_items": {
+      "description": "物品过多时发送物品列表",
+      "hint": "查询结果超过最大数量时发送匹配物品列表图片。"
+    },
+    "custom_item_alias": {
+      "description": "额外物品别名",
+      "hint": "内置别名列表没有的物品别名可在此追加，例如 关键词：闪烁匕首，别名：跳刀。",
+      "templates": {
+        "alias": {
+          "name": "物品别名",
+          "items": {
+            "keyword": {
+              "description": "关键词"
+            },
+            "alias": {
+              "description": "别名"
+            }
+          }
+        }
+      }
+    },
+    "auto_recall_tips": {
+      "description": "自动撤回提示消息",
+      "hint": "指令结束后撤回“正在搜索对局详情，请稍后……”等提示（OneBot 支持；失败时忽略）。"
+    },
+    "rank_broad_switch": {
+      "description": "段位变动播报"
+    },
+    "rank_broad_star": {
+      "description": "星级变动播报"
+    },
+    "rank_broad_leader": {
+      "description": "冠绝名次变动播报"
+    },
+    "rank_broad_fun": {
+      "description": "整活播报模板",
+      "hint": "开启后以图片形式进行段位变动播报。"
+    },
+    "daily_report_switch": {
+      "description": "日报功能"
+    },
+    "daily_report_hours": {
+      "description": "日报发布小时",
+      "hint": "0–23，按 AstrBot 所在时区。"
+    },
+    "daily_report_show_combi": {
+      "description": "日报显示组合（兼容字段）",
+      "hint": "新版日报不使用此项，仅为兼容原配置保留。"
+    },
+    "weekly_report_switch": {
+      "description": "周报功能"
+    },
+    "weekly_report_day_hours": {
+      "description": "周报发布时间 [周几, 几点]",
+      "hint": "两个数字：周几（1–7，7 为周日）与小时（0–23）。默认周一 10 点。"
+    },
+    "weekly_report_show_combi": {
+      "description": "周报显示组合"
+    },
+    "template_match": {
+      "description": "比赛模板",
+      "hint": "生成比赛信息图片使用的模板。"
+    },
+    "template_player": {
+      "description": "玩家模板"
+    },
+    "template_hero": {
+      "description": "英雄模板"
+    },
+    "player_rank_estimate": {
+      "description": "段位估算",
+      "hint": "在 player 模板中对没有段位的玩家估算段位，估算段位以灰色显示。"
+    },
+    "patch_notes_retrieval_depth": {
+      "description": "更新日志获取范围（大版本）",
+      "hint": "hero/item 模板展示改动历史的大版本数量，范围 1–5。"
+    },
+    "render_scale": {
+      "description": "渲染清晰度",
+      "hint": "图片设备缩放级别。",
+      "labels": [
+        "标准",
+        "高",
+        "超高"
+      ]
+    },
+    "render_image_type": {
+      "description": "图片格式"
+    },
+    "render_jpeg_quality": {
+      "description": "JPEG 质量",
+      "hint": "10–100，仅 jpeg 时生效。"
+    }
+  },
+  "pages": {
+    "overview": {
+      "title": "运行概览"
+    },
+    "subscriptions": {
+      "title": "订阅与绑定"
+    },
+    "templates": {
+      "title": "模板预览"
+    },
+    "diagnostics": {
+      "title": "诊断"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{#- Port of old/src/templates/match/match_2+/map.ejs; building states come from view["map"]. -#}
+<section class="map">
+  {% include "common/building_icons.html.j2" %}
+  <svg id="map" viewBox="0 0 255 255" width="250" height="250">
+    <rect x="0" y="0" width="255" height="255" fill="#f5f5f5" rx="12" ry="12" />
+    <image href="{{ map.minimap }}" width="255" height="255"/>
+  {% for b in map.nodes %}
+    {% if b.icon %}
+    <use
+      href="{{ b.href }}"
+      class="{{ b.cls }}"
+      x="{{ b.x }}" y="{{ b.y }}"
+      width="{{ b.size }}" height="{{ b.size }}"
+    />
+    {% endif %}
+    {% if b.showTime %}
+     <text
+       x="{{ b.cx }}"
+       y="{{ b.cy }}"
+       fill="#ccc"
+       font-weight="bold"
+       text-anchor="middle"
+       dominant-baseline="middle"
+     >
+       {{ b.time }}
+     </text>
+    {% endif %}
+  {% endfor %}
+  </svg>
+</section>

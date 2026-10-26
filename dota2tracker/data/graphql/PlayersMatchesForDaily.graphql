@@ -1,0 +1,31 @@
+query PlayersMatchesForDaily($steamAccountIds: [Long]!, $seconds: Long!) {
+  players(steamAccountIds: $steamAccountIds) {
+    steamAccount {
+      id
+      name
+      avatar
+    }
+    matches(request: { startDateTime: $seconds, take: 50 }) {
+      id
+      didRadiantWin
+      parsedDateTime
+      startDateTime
+      durationSeconds
+      players {
+        heroId
+        kills
+        deaths
+        assists
+        imp
+        isRadiant
+        heroDamage
+        towerDamage
+        heroHealing
+        networth
+        steamAccount {
+          id
+        }
+      }
+    }
+  }
+}

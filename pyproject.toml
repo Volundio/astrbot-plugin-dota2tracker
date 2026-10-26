@@ -1,0 +1,34 @@
+# Development tooling only. AstrBot loads the plugin from main.py and installs
+# runtime dependencies from requirements.txt.
+[project]
+name = "astrbot-plugin-dota2tracker"
+version = "1.1.0"
+description = "AstrBot port of koishi-plugin-dota2tracker"
+requires-python = ">=3.12"
+license = { text = "GPL-3.0-only" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["old"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ASYNC", "RUF", "SIM", "PIE"]
+ignore = [
+  "RUF001", # ambiguous unicode in strings (Chinese punctuation is intentional)
+  "RUF002",
+  "RUF003",
+  "SIM108",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["ASYNC240", "E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dota2tracker"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

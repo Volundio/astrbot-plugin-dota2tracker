@@ -1,0 +1,54 @@
+{#- Port of old/src/templates/report/daily_legacy.ejs (+ daily_legacy/base.css).
+    Values come from presentation/viewmodels/report.py (build_daily_legacy_view). -#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Daily Report</title>
+    <style>
+      {{ css("common/normalize.min.css") }}
+      {{ css("report/daily_legacy/base.css") }}
+    </style>
+</head>
+<body>
+    <h3 class="title">{{ title | js }}</h3>
+
+    <div class="players">
+        {% for p in players %}
+        <div class="player">
+            <img src="{{ p.avatar | js }}" class="avatar" />
+            <span class="name">{{ p.name | js }}</span>
+            <span class="count">
+                <span class="win">{{ t("dota2tracker.template.report_won") }}{{ p.winCount }}</span>
+                <span class="lose">{{ t("dota2tracker.template.report_lost") }}{{ p.loseCount }}</span>
+                <span>{{ t("dota2tracker.template.report_winrate") }} {{ p.winRate }}%</span>
+            </span>
+            <div class="performance">
+                <div class="{{ p.imp.barClass }}">
+                    <div class="left" style="{{ p.imp.leftStyle }}"></div>
+                    <div class="pipe"></div>
+                    <div class="right" style="{{ p.imp.rightStyle }}"></div>
+                </div>
+                <span class="score_value">{{ p.imp.valStr }}</span>
+            </div>
+            <span class="kda">{{ p.kda }}</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="combinations"{% if not showCombi %} style="display:none;"{% endif %}>
+        <span style="grid-column: 1/-1">{{ t("dota2tracker.template.combined_win_loss_summary") }}</span>
+        {% for combi in combinations %}
+        <div class="players">
+            {% for avatar in combi.avatars %}
+            <img src="{{ avatar | js }}" class="avatar" />
+            {% endfor %}
+        </div>
+        <span class="win">{{ t("dota2tracker.template.report_won") }}{{ combi.winCount }}</span>
+        <span class="lose">{{ t("dota2tracker.template.report_lost") }}{{ combi.loseCount }}</span>
+        <span>{{ t("dota2tracker.template.report_winrate") }} {{ combi.winRate }}%</span>
+        {% endfor %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+query PlayersLastmatchRankinfo($steamAccountIds: [Long]!) {
+  players(steamAccountIds: $steamAccountIds) {
+    steamAccount {
+      id
+      name
+      avatar
+      seasonRank
+      seasonLeaderboardRank
+      isAnonymous
+    }
+    matches(request: { take: 1 }) {
+      id
+      parsedDateTime
+      startDateTime
+      players {
+        steamAccount {
+          id
+        }
+      }
+    }
+  }
+}

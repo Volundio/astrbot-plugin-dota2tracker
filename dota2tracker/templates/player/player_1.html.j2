@@ -1,0 +1,165 @@
+{#- Port of old/src/templates/player/player_1.ejs (+ player_1/private.ejs).
+    All values come from presentation/viewmodels/player.py; the template only lays them out. -#}
+<!DOCTYPE html>
+<html lang="{{ languageTag }}">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Player</title>
+    <style>
+    {{ css("common/normalize.min.css") }}
+    {{ css("player/player_1/base.css") }}
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="player">
+            <div class="avatar"><img src="{{ avatar }}" alt="" /></div>
+            <div class="info">
+                <p class="name">
+                    {{ playerName }}
+                    {% if guild %}
+                    <span class="guild {{ guild.cls }}">{{ guild.tag }}</span>
+                    {% endif %}
+                    {% if isGenHero %}
+                    <span class="hero_name">{{ genHeroName }}</span>
+                    {% endif %}
+                </p>
+                <p class="matches">
+                    {{ t("dota2tracker.template.match_count_") }}{{ matchCount }}
+                    (<span class="win">{{ winCount }}</span>/<span class="lose">{{ loseCount }}</span>) &nbsp;&nbsp;
+                    {{ t("dota2tracker.template.winrate_") }}
+                    <span style="color:{{ winRateColor }};">{{ winRate }}%</span>
+                </p>
+                <p class="matches{{ ' blur' if isAnon else '' }}">
+                    <span>{{ t("dota2tracker.template.last25matches_") }}
+                        <span class="win">{{ nearWin }}</span>/<span class="lose">{{ nearLose }}</span>
+                    </span>&nbsp;
+                    <span>{{ t("dota2tracker.template.winrate_") }}
+                        <span style="color:{{ nearRateColor }};">{{ nearRate }}%</span>
+                    </span>&nbsp;
+                    <span>{{ t("dota2tracker.template.imp_") }}{{ impText }}</span>
+                </p>
+                <p class="matches{{ ' blur' if isAnon else '' }}">
+                    <span>{{ t("dota2tracker.template.lane") }}
+                        <span class="victory">{{ outcomes.win }}(<span class="stomp">{{ outcomes.stomp }}</span>)</span>-<span class="tie">{{ outcomes.tie }}</span>-<span class="fail">{{ outcomes.fail }}(<span class="stomped">{{ outcomes.stomped }}</span>)</span>
+                    </span>&nbsp;&nbsp;
+                    <span>{{ t("dota2tracker.template.lane_advantage_rate_") }}
+                        <span style="color:{{ laneColor }};">{{ laneRate }}%</span>
+                    </span>
+                </p>
+            </div>
+            <div class="rank{{ ' estimated' if estimated else '' }}">
+                <img class="medal" src="{{ medalImg }}" alt="" />
+                <img class="star" src="{{ starImg }}" alt="" />
+                <p>{{ leaderboard }}</p>
+            </div>
+        </div>
+
+        <div class="hero_winrate">
+            <div class="heroes">
+                <p class="tip row total">{{ t("dota2tracker.template.all_matches_") if isGenHero else t("dota2tracker.template.top10_") }}</p>
+                <span class="tip">{{ t("dota2tracker.template.hero") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.match_count") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.winrate") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.imp") }}</span>
+                <span class="tip win_count" style="justify-self: end; margin-right: 2px">{{ t("dota2tracker.template.win_count") }}</span>
+                <span class="tip lose_count" style="justify-self: start; margin-left: 2px">{{ t("dota2tracker.template.lose_count") }}</span>
+
+                {% for hero in heroes %}
+                <span><img alt="" src="{{ hero.img }}" /></span>
+                <span class="count">{{ hero.matchCount }}</span>
+                <span class="win_rate">{{ hero.winRate }}%</span>
+                <span class="imp">{{ hero.imp }}</span>
+                <span class="win" style="{{ hero.winStyle }}">{{ hero.winCount }}</span>
+                <span class="lose" style="{{ hero.loseStyle }}">{{ hero.loseCount }}</span>
+                {% endfor %}
+
+                <p class="tip row near">{{ t("dota2tracker.template.recently_positions") }}</p>
+                <span class="tip">{{ t("dota2tracker.template.position") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.match_count") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.winrate") }}</span>
+                <span class="tip" style="margin: 0 4px">{{ t("dota2tracker.template.imp") }}</span>
+                <span class="tip win_count" style="justify-self: end; margin-right: 2px">{{ t("dota2tracker.template.win_count") }}</span>
+                <span class="tip lose_count" style="justify-self: start; margin-left: 2px">{{ t("dota2tracker.template.lose_count") }}</span>
+
+                {% for pos in positions %}
+                <span><img src="{{ pos.img }}"></span>
+                <span class="count">{{ pos.matchCount }}</span>
+                <span class="win_rate">{{ pos.winRate }}%</span>
+                <span class="imp">{{ pos.imp }}</span>
+                <span class="win" style="{{ pos.winStyle }}">{{ pos.winCount }}</span>
+                <span class="lose" style="{{ pos.loseStyle }}">{{ pos.loseCount }}</span>
+                {% endfor %}
+            </div>
+
+            {% if isAnon %}{% include "player/player_1/private.html.j2" %}{% endif %}
+        </div>
+
+        {% if streak %}
+        <div class="streak" style="{{ streak.style }}">
+            {{ streak.text }}
+        </div>
+        {% endif %}
+
+        <div>
+            <table class="matches">
+                <colgroup>
+                    <col style="width: auto" /><col style="width: auto" /><col style="width: 40px" />
+                    <col style="width: auto" /><col style="width: 40px" /><col style="width: auto" />
+                    <col style="width: auto" /><col style="width: auto" /><col style="width: 40px" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th>{{ t("dota2tracker.template.id") }}</th>
+                        <th>{{ t("dota2tracker.template.mode") }}</th>
+                        <th>{{ t("dota2tracker.template.hero") }}</th>
+                        <th>{{ t("dota2tracker.template.kda_kc") }}</th>
+                        <th>{{ t("dota2tracker.template.lane") }}</th>
+                        <th>{{ t("dota2tracker.template.time") }}</th>
+                        <th>{{ t("dota2tracker.template.duration") }}</th>
+                        <th>{{ t("dota2tracker.template.imp") }}</th>
+                        <th>{{ t("dota2tracker.template.rank") }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in matches %}
+                    <tr class="match {{ 'win' if m.didWin else 'lose' }}">
+                        <td>{% if m.parsed %}{{ m.id }}{% else %}<p>{{ m.id }}</p><p>{{ t("dota2tracker.template.un_parsed") }}</p>{% endif %}</td>
+                        <td>
+                            <p>{{ m.lobby }}</p>
+                            <p>{{ m.mode }}</p>
+                        </td>
+                        <td><img alt="" src="{{ m.heroImg }}" /></td>
+                        <td style="line-height: 20px">
+                            <p>{{ m.kda }} ({{ m.kp }}%)</p>
+                            <p>{{ m.kills }}/{{ m.deaths }}/{{ m.assists }}</p>
+                        </td>
+                        <td><div class="player_lane {{ m.laneRes }}"><img src="{{ m.laneImg }}" /></div></td>
+                        <td style="line-height: 20px">{{ m.timeStr }}</td>
+                        <td>{{ m.durationTime }}</td>
+                        <td>{{ m.imp }}</td>
+                        <td><img class="medal" src="{{ m.rankImg }}" style="width: 100%" /></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if isAnon %}{% include "player/player_1/private.html.j2" %}{% endif %}
+        </div>
+
+        <div class="plus">
+            {% for hero in dotaPlus %}
+            <div class="hero">
+                <img src="{{ hero.img }}" alt="" />
+                <div class="level"><img src="{{ hero.badge }}" alt="" /><span>{{ hero.level }}</span></div>
+                <span>{{ hero.winRate }}%</span>
+                <span>{{ hero.matchCount }}</span>
+            </div>
+            {% endfor %}
+
+            {% if isAnon %}{% include "player/player_1/private.html.j2" %}{% endif %}
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{#- Port of old/src/templates/match/match_2.ejs. -#}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Match</title>
+    <style>
+      {{ css("common/normalize.min.css") }}
+      {% include "match/match_2/original.css.j2" %}
+    </style>
+  </head>
+  <body>
+    {% include "match/match_2/original.html.j2" %}
+  </body>
+</html>

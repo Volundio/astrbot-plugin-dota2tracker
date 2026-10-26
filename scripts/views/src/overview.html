@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="views.overview.title">Overview</title>
+<style>
+/*@COMMON_CSS@*/
+.issue-list li { display: flex; gap: 8px; align-items: baseline; }
+.pending-subs { margin: 0; padding-left: 16px; }
+</style>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+</head>
+<body>
+<header class="page-header">
+  <h1 data-i18n="views.overview.title">Overview</h1>
+  <span id="version" class="muted small"></span>
+  <span class="spacer"></span>
+  <div class="toolbar">
+    <span id="updated" class="muted small" aria-live="polite"></span>
+    <label class="inline small"><input type="checkbox" id="auto"> <span data-i18n="views.overview.autoRefresh"></span></label>
+    <button type="button" id="refresh" class="primary" data-i18n="views.overview.refresh"></button>
+  </div>
+</header>
+<div id="banners"></div>
+<main id="content"></main>
+
+<script>
+/*@COMMON_JS@*/
+
+const AUTO_REFRESH_MS = 30000;
+const state = { data: null, error: null, loading: true, updatedAt: null };
+let timer = null;
+
+const $ = (id) => document.getElementById(id);
+
+async function load(useRefresh) {
+  state.loading = !state.data;
+  if (!state.data) render();
+  try {
+    state.data = useRefresh ? await bridge.apiPost("refresh", {}) : await bridge.apiGet("status");
+    state.error = null;
+    state.updatedAt = Date.now() / 1000;
+    if (useRefresh) toast(t("views.overview.refreshed"), "ok");
+  } catch (error) {
+    state.error = error;
+    if (state.data) toast(errorText(error), "danger");
+  } finally {
+    state.loading = false;
+    render();
+  }
+}
+
+function setAuto(enabled) {
+  clearInterval(timer);
+  timer = null;
+  if (enabled) {
+    timer = setInterval(() => {
+      if (!document.hidden) load(false);
+    }, AUTO_REFRESH_MS);
+  }
+}
+
+function card(titleKey, ...body) {
+  return h("section", { class: "card" }, h("h2", { text: t(titleKey) }), ...body);
+}
+
+function kv(rows) {
+  return h("dl", { class: "kv" }, rows.map(([key, value]) => [h("dt", { text: t(key) }), h("dd", {}, value)]));
+}
+
+function stat(labelKey, value) {
+  return h("div", { class: "stat" }, h("div", { class: "value", text: fmtNumber(value) }), h("div", { class: "label", text: t(labelKey) }));
+}
+
+function renderBanners(d) {
+  const banners = [];
+  // Warn only when the backend reports that no messaging platform is running at all.
+  if (d.platforms && Array.isArray(d.platforms.running) && d.platforms.running.length === 0) {
+    banners.push(h("div", { class: "banner warn", role: "alert", text: t("views.common.noPlatform") }));
+  } else if (d.platforms && d.platforms.onebot === false) {
+    banners.push(h("div", { class: "banner info", role: "status", text: t("views.common.noOnebot") }));
+  }
+  if (!d.config.stratzToken) {
+    banners.push(h("div", { class: "banner danger", role: "alert", text: t("views.overview.noStratzToken") }));
+  }
+  if (d.scheduler && !d.scheduler.running) {
+    banners.push(h("div", { class: "banner warn", text: t("views.overview.schedulerStopped") }));
+  }
+  setContent($("banners"), banners);
+}
+
+function featuresCard(c) {
+  return card("views.overview.features", kv([
+    ["views.overview.stratzToken", yesNoBadge(c.stratzToken, "views.common.configured", "views.common.missing", "danger")],
+    ["views.overview.opendota", yesNoBadge(c.opendota)],
+    ["views.overview.rankBroadcast", yesNoBadge(c.rankBroadcast)],
+    ["views.overview.dailyReport", yesNoBadge(c.dailyReport)],
+    ["views.overview.weeklyReport", yesNoBadge(c.weeklyReport)],
+  ]));
+}
+
+function schedulerCard(d) {
+  const s = d.scheduler || {};
+  return card("views.overview.scheduler", kv([
+    ["views.overview.state", s.running ? badge(t("views.common.running"), "ok") : badge(t("views.common.stopped"), "warn")],
+    ["views.overview.startedAt", fmtTime(s.startedAt)],
+    ["views.overview.ticks", fmtNumber(s.ticks)],
+    ["views.overview.activeJobs", fmtNumber(s.activeJobs)],
+    ["views.overview.lastDiscovery", fmtTime(d.lastDiscovery)],
+    ["views.overview.lastPoll", fmtTime(d.lastPoll)],
+    ["views.overview.lastDaily", fmtTime(d.lastDaily)],
+    ["views.overview.lastWeekly", fmtTime(d.lastWeekly)],
+  ]));
+}
+
+function countsCard(d) {
+  const c = d.counts || {};
+  const memberGroups = Object.keys(d.members || {}).length;
+  const memberTotal = Object.values(d.members || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  return card("views.overview.counts",
+    h("div", { class: "stats" },
+      stat("views.overview.subscribedChannels", c.subscribed_channels),
+      stat("views.overview.channels", c.channels),
+      stat("views.overview.players", c.players),
+      stat("views.overview.pendingMatches", c.pending_matches),
+      stat("views.overview.sentMatches", c.sent_matches),
+      stat("views.overview.matchExtensions", c.match_extensions)),
+    h("p", { class: "muted small", text: t("views.overview.memberCache", { groups: fmtNumber(memberGroups), members: fmtNumber(memberTotal) }) }),
+    h("p", { class: "muted small", text: d.openDotaCallsToday === null || d.openDotaCallsToday === undefined
+      ? t("views.overview.openDotaCallsDisabled")
+      : t("views.overview.openDotaCalls", { count: fmtNumber(d.openDotaCallsToday) }) }));
+}
+
+function rendererCard(d) {
+  const r = d.renderer || {};
+  const k = d.constants || {};
+  return card("views.overview.rendererAndData", kv([
+    ["views.overview.renders", fmtNumber(r.renders)],
+    ["views.overview.renderFailures", r.failures ? badge(fmtNumber(r.failures), "danger") : "0"],
+    ["views.overview.lastRenderMs", r.last_duration === null || r.last_duration === undefined ? "-" : `${fmtNumber(Math.round(r.last_duration * 1000))} ms`],
+    ["views.overview.lastRenderError", r.last_error ? h("code", { text: r.last_error }) : "-"],
+    ["views.overview.constantsVersion", `${k.version || "-"} (${k.source || "-"})`],
+    ["views.overview.constantsSize", t("views.overview.constantsSizeValue", { heroes: fmtNumber(k.heroes), items: fmtNumber(k.items), abilities: fmtNumber(k.abilities) })],
+  ]));
+}
+
+function issuesCard(issues) {
+  if (!issues || !issues.length) return null;
+  return card("views.overview.configIssues", h("ul", { class: "plain issue-list" }, issues.map((issue) =>
+    h("li", {},
+      badge(t(`views.common.level.${issue.level}`, null, issue.level), issue.level === "error" ? "danger" : "warn"),
+      h("code", { text: issue.field }),
+      h("span", { text: issue.message })))));
+}
+
+function pendingCard(pending) {
+  const body = !pending || !pending.length
+    ? stateBox("empty", t("views.overview.noPending"))
+    : h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+      h("thead", {}, h("tr", {}, ["matchId", "requestTime", "waiting", "subscribers"].map((k) => h("th", { text: t(`views.overview.pendingCols.${k}`) })))),
+      h("tbody", {}, pending.map((p) => h("tr", {},
+        h("td", { "data-label": t("views.overview.pendingCols.matchId") }, h("code", { text: String(p.matchId) })),
+        h("td", { "data-label": t("views.overview.pendingCols.requestTime"), text: fmtTime(p.requestTime) }),
+        h("td", { "data-label": t("views.overview.pendingCols.waiting"), text: t("views.overview.minutes", { n: fmtNumber(p.waitingMinutes) }) }),
+        h("td", { "data-label": t("views.overview.pendingCols.subscribers") },
+          h("ul", { class: "pending-subs" }, (p.subscribers || []).map((s) =>
+            h("li", { class: "small" }, `${s.platform}:${s.channelId} · ${t(`views.overview.subscriberType.${s.type}`, null, s.type)} · ${t(`views.overview.subscriberSource.${s.source}`, null, s.source)}`)))))))));
+  return h("section", { class: "card" }, h("h2", { text: `${t("views.overview.pending")} (${(pending || []).length})` }), body);
+}
+
+function errorsCard(errors) {
+  const body = !errors || !errors.length
+    ? stateBox("empty", t("views.overview.noErrors"))
+    : h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
+      h("thead", {}, h("tr", {}, ["time", "source", "type", "message"].map((k) => h("th", { text: t(`views.common.errorCols.${k}`) })))),
+      h("tbody", {}, errors.map((e) => h("tr", {},
+        h("td", { "data-label": t("views.common.errorCols.time"), text: fmtTime(e.timestamp) }),
+        h("td", { "data-label": t("views.common.errorCols.source") }, h("code", { text: e.source || "-" })),
+        h("td", { "data-label": t("views.common.errorCols.type"), text: e.type }),
+        h("td", { "data-label": t("views.common.errorCols.message") }, h("code", { text: e.message })))))));
+  return h("section", { class: "card" }, h("h2", { text: t("views.overview.recentErrors") }), body);
+}
+
+function render() {
+  const content = $("content");
+  $("updated").textContent = state.updatedAt ? t("views.overview.updatedAt", { time: fmtTime(state.updatedAt) }) : "";
+  $("refresh").disabled = state.loading;
+  if (state.loading && !state.data) {
+    setContent(content, stateBox("loading"));
+    return;
+  }
+  if (!state.data) {
+    setContent($("banners"));
+    setContent(content, stateBox("error", errorText(state.error), () => load(false)));
+    return;
+  }
+  const d = state.data;
+  $("version").textContent = `${d.plugin.name} v${d.plugin.version}`;
+  renderBanners(d);
+  setContent(content,
+    h("div", { class: "stack" },
+      issuesCard(d.config.issues),
+      h("div", { class: "grid" }, featuresCard(d.config), schedulerCard(d), countsCard(d), rendererCard(d)),
+      pendingCard(d.pending),
+      errorsCard(d.recentErrors),
+      h("p", { class: "muted small", text: t("views.overview.upstream", { url: d.plugin.upstream }) })));
+}
+
+$("refresh").addEventListener("click", () => busy($("refresh"), () => load(true)));
+$("auto").addEventListener("change", (event) => setAuto(event.target.checked));
+window.addEventListener("pagehide", () => setAuto(false));
+window.addEventListener("beforeunload", () => setAuto(false));
+
+let started = false;
+boot(() => {
+  render();
+  if (!started) {
+    started = true;
+    load(false);
+  }
+});
+</script>
+</body>
+</html>
