@@ -14,8 +14,11 @@ All functions take timezone-aware ``datetime`` objects; ``local_now()`` and
 from __future__ import annotations
 
 import calendar
+import functools
 import math
+import os
 from datetime import UTC, date, datetime, timedelta, tzinfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .jsnum import js_str, to_locale_string
 
@@ -95,11 +98,35 @@ def normalize_locale(locale: str | None) -> str:
     return "en-US"
 
 
+@functools.cache
+def system_timezone() -> tzinfo | None:
+    """The system zone with its DST rules (Luxon's default zone), if it can be determined.
+
+    ``datetime.now().astimezone()`` only yields today's fixed UTC offset, so
+    midnight of another day computed from it is off by an hour around DST
+    changes. ``TZ`` (an IANA name) wins over ``/etc/localtime`` like in libc;
+    a non-IANA ``TZ`` or a system without zone files returns ``None`` and
+    callers fall back to the fixed offset.
+    """
+    name = os.environ.get("TZ", "").lstrip(":")
+    if name:
+        try:
+            return ZoneInfo(name)
+        except (ZoneInfoNotFoundError, ValueError):
+            return None
+    try:
+        with open("/etc/localtime", "rb") as handle:
+            return ZoneInfo.from_file(handle, key="localtime")
+    except (OSError, ValueError):
+        return None
+
+
 def local_now(tz: tzinfo | None = None) -> datetime:
     """``DateTime.now()`` in the given (default: system) timezone."""
-    if tz is None:
+    zone = tz or system_timezone()
+    if zone is None:
         return datetime.now().astimezone()
-    return datetime.now(tz)
+    return datetime.now(zone)
 
 
 def from_seconds(seconds: float, tz: tzinfo | None = None) -> datetime:

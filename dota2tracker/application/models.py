@@ -94,6 +94,9 @@ class Subscriber:
     relevant_players: list[PlayerContext] = field(default_factory=list)
     user_id: str = ""
     template_name: str | None = None
+    #: already published (or refused by the platform / given up); kept so the
+    #: watcher does not queue the same channel again after a partial publication
+    done: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,6 +109,7 @@ class Subscriber:
             "relevantPlayers": [p.to_dict() for p in self.relevant_players],
             "userId": self.user_id,
             "templateName": self.template_name,
+            "done": self.done,
         }
 
     @classmethod
@@ -120,4 +124,5 @@ class Subscriber:
             relevant_players=[PlayerContext.from_dict(p) for p in data.get("relevantPlayers") or []],
             user_id=str(data.get("userId") or ""),
             template_name=data.get("templateName") or None,
+            done=bool(data.get("done")),
         )

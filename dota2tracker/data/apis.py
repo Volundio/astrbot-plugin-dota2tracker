@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 
 from ..errors import wrap_fetch_error
-from .http import RequestQueue, build_client
+from .http import REQUEST_DEADLINE, RequestQueue, build_client
 
 __all__ = ["OpenDotaAPI", "ValveAPI"]
 
@@ -38,7 +38,8 @@ class _BaseClient:
         async def task() -> Any:
             self.request_count += 1
             try:
-                response = await send()
+                async with asyncio.timeout(REQUEST_DEADLINE):  # whole request, see StratzAPI._fetch
+                    response = await send()
                 response.raise_for_status()
                 data = response.json()
             except asyncio.CancelledError:

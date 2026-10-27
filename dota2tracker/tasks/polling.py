@@ -2,8 +2,8 @@
 
 Target fixes over the original (DEVELOPMENT.md §9.5):
 
-* pending matches are persisted in SQLite and every destination is removed
-  from the entry as soon as it has been handled, so a reload only resumes the
+* pending matches are persisted in SQLite and every destination is marked
+  ``done`` as soon as it has been handled, so a reload only resumes the
   destinations that are still waiting (at most the in-flight message can be
   repeated);
 * a destination whose image could not be formatted/rendered stays pending and
@@ -51,6 +51,8 @@ class PendingEntry:
     subscribers: list[Subscriber] = field(default_factory=list)
     #: failed publication rounds (in memory only; reset by a reload)
     attempts: int = 0
+    #: last "still waiting" notice / OpenDota parse request (clock seconds)
+    last_notice: float | None = None
 
 
 class ParsePollingTask:
@@ -113,6 +115,7 @@ class ParsePollingTask:
                 "subscribers": [
                     {"source": s.source, "type": s.type, "platform": s.platform, "channelId": s.channel_id}
                     for s in entry.subscribers
+                    if not s.done
                 ],
             }
             for entry in self._pending.values()
@@ -135,11 +138,22 @@ class ParsePollingTask:
             await asyncio.gather(*self._background, return_exceptions=True)
 
     # ------------------------------------------------------------------ add
+    def automatic_targets(self, match_id: int) -> set[str]:
+        """UMOs that already have an automatic broadcast for a pending match (published or not)."""
+        entry = self._pending.get(match_id)
+        if entry is None:
+            return set()
+        return {s.umo for s in entry.subscribers if s.source == "AUTOMATIC"}
+
     async def add(self, match_id: int, subscribers: list[Subscriber]) -> None:
         async with self._lock:
             is_new = match_id not in self._pending
             entry = self._pending.get(match_id) or PendingEntry(match_id, self._clock())
-            entry.subscribers.extend(subscribers)
+            known = {s.umo for s in entry.subscribers if s.source == "AUTOMATIC"}
+            fresh = [s for s in subscribers if s.source != "AUTOMATIC" or s.umo not in known]
+            if not fresh and not is_new:
+                return
+            entry.subscribers.extend(fresh)
             self._pending[match_id] = entry
             await self._persist(entry)
         if is_new:
@@ -206,8 +220,13 @@ class ParsePollingTask:
             await self._finish(entry, force=True)
             return
         if result is None or result.status == "PENDING":
+            # Every 5 minutes of waiting, measured by time rather than by "polled when the
+            # waiting minutes are a multiple of 5": with N pending matches each one is only
+            # polled every N minutes, so the modulo could never match (target fix).
+            now = self._clock()
             waiting = math.floor(age / 60)
-            if waiting > 0 and waiting % 5 == 0:
+            if waiting >= 5 and (entry.last_notice is None or now - entry.last_notice >= 5 * 60 - 30):
+                entry.last_notice = now
                 self._logger.info(
                     self._i18n.gt("dota2tracker.logger.waiting_for_parse", {"matchId": entry.match_id, "time": waiting})
                 )
@@ -216,17 +235,18 @@ class ParsePollingTask:
         # NOT_FOUND keeps the entry until the timeout turns it into an unparsed
         # report (or the grace period above gives up on it).
 
-    async def _remove(self, entry: PendingEntry, done: list[Subscriber]) -> None:
-        """Drop handled destinations from the entry and persist the progress."""
+    async def _mark_done(self, entry: PendingEntry, handled: list[Subscriber]) -> None:
+        """Mark handled destinations and persist the progress."""
         async with self._lock:
-            entry.subscribers = [s for s in entry.subscribers if not any(s is d for d in done)]
+            for subscriber in handled:
+                subscriber.done = True
             if self._pending.get(entry.match_id) is entry:
                 await self._persist(entry)
 
     async def _finish(self, entry: PendingEntry, *, force: bool = False) -> bool:
-        """Finish the entry when no destination is left (or unconditionally with ``force``)."""
+        """Finish the entry when every destination is done (or unconditionally with ``force``)."""
         async with self._lock:
-            if entry.subscribers and not force:
+            if not force and any(not s.done for s in entry.subscribers):
                 return False
             if self._pending.get(entry.match_id) is entry:
                 del self._pending[entry.match_id]
@@ -234,7 +254,7 @@ class ParsePollingTask:
             return True
 
     async def _publish(self, entry: PendingEntry, match_query: dict[str, Any]) -> None:
-        targets = list(entry.subscribers)
+        targets = [s for s in entry.subscribers if not s.done]
         by_locale: dict[str, list[Subscriber]] = {}
         for subscriber in targets:
             by_locale.setdefault(subscriber.language_tag, []).append(subscriber)
@@ -271,7 +291,7 @@ class ParsePollingTask:
                     self._reporter.report(error, f"send/{subscriber.umo}")
                     ok = False
                 # Delivered or refused by the platform (bot left the group, …): handled either way.
-                await self._remove(entry, [subscriber])
+                await self._mark_done(entry, [subscriber])
                 if ok:
                     delivered.append(
                         {"platform": subscriber.platform, "guildId": subscriber.channel_id, "languageTag": locale}
@@ -300,5 +320,5 @@ class ParsePollingTask:
                         {"matchId": entry.match_id, "count": len(failed), "attempts": entry.attempts},
                     )
                 )
-                await self._remove(entry, failed)
+                await self._mark_done(entry, failed)
         await self._finish(entry)

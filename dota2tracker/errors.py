@@ -95,7 +95,7 @@ def classify_error(error: BaseException) -> ErrorType:
         return "Cancel"
     if isinstance(error, PluginStoppedError):
         return "Cancel"
-    if isinstance(error, httpx.TimeoutException):
+    if isinstance(error, (httpx.TimeoutException, TimeoutError)):
         return "Timeout"
     if isinstance(error, httpx.HTTPStatusError):
         status = error.response.status_code

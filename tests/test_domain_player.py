@@ -173,3 +173,12 @@ def test_build_guild_members(fixture_loader):
     assert members[0]["lastMatchTime"] == players[0]["matches"][0]["startDateTime"]
     no_matches = members[4]
     assert math.isnan(no_matches["winRate"]) and no_matches["lastMatchTime"] is None
+
+
+def test_extend_player_data_tolerates_null_account_and_matches(constants):
+    from dota2tracker.domain.player import extend_player_data
+
+    player = extend_player_data({"player": {"steamAccount": None, "matches": None}}, None, constants)
+    assert isinstance(player["steamAccount"], dict) and player["matches"] == []
+    player = extend_player_data({"player": {"matches": [None, {"durationSeconds": 60}]}}, {"player": None}, constants)
+    assert [m["durationTime"] for m in player["matches"]] == ["1:00"]

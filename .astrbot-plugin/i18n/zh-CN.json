@@ -53,7 +53,8 @@
         "import_invalid_extension": "只能导入 .json 文件。",
         "import_too_large": "文件超过 2 MB 上限。",
         "import_invalid_json": "文件不是有效的 JSON。",
-        "import_invalid_format": "无法识别的文件格式：需要本插件导出的文件。"
+        "import_invalid_format": "无法识别的文件格式：需要本插件导出的文件。",
+        "plugin_unavailable": "插件未运行（已停用或正在重载），请稍后刷新。"
       },
       "noPlatform": "没有正在运行的消息平台适配器，无法推送战报。",
       "noOnebot": "未检测到 OneBot (aiocqhttp) 适配器：提示撤回、离群过滤、群名片/头像不可用，其余功能照常。"

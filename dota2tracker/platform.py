@@ -30,7 +30,9 @@ def chat_context(event: AstrMessageEvent) -> ChatContext:
         umo=event.unified_msg_origin,
         platform_id=str(event.get_platform_id() or ""),
         platform_type=str(event.get_platform_name() or ""),
-        channel_id=sender_id if is_private else group_id,
+        # Like Koishi's "private:<id>": QQ user and group numbers share one number space,
+        # so a bare sender id could match a group's bindings.
+        channel_id=f"private:{sender_id}" if is_private else group_id,
         user_id=sender_id,
         sender_name=str(event.get_sender_name() or ""),
         is_private=is_private,
@@ -137,7 +139,11 @@ class EventTips:
                 return
             except Exception as error:
                 self._logger.debug("dota2tracker: OneBot tip send failed, falling back: %s", error)
-        await self._event.send(MessageChain().message(text))
+        try:
+            await self._event.send(MessageChain().message(text))
+        except Exception as error:
+            # Tips are a courtesy: a failed tip (rate limit, …) must not fail the command.
+            self._logger.debug("dota2tracker: sending a tip failed: %s", error)
 
     async def finish(self) -> None:
         if not self._message_ids:

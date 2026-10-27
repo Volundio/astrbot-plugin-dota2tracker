@@ -3,6 +3,12 @@
 * every minute: match discovery, then parse polling (same order as the original)
 * ``0 {daily_report_hours} * * *``: daily report
 * ``0 {hour} * * {weekday}``: legacy weekly report (cron weekday, 0 = Sunday)
+
+A report fires when its scheduled time lies between the previous tick and the
+current one, at most once per local date. A clock stepping forward over the
+scheduled time or a stalled loop therefore still fires the report, while a
+clock stepping back or the repeated hour at the end of DST never fires it
+twice (target fix over a plain "hour == H" check).
 """
 
 from __future__ import annotations
@@ -10,7 +16,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from ..config import PluginConfig
@@ -48,6 +54,8 @@ class TaskScheduler:
         self._task: asyncio.Task[None] | None = None
         self._jobs: set[asyncio.Task[Any]] = set()
         self._minute_running = False
+        self._last_tick: datetime | None = None
+        self._fired: dict[str, date] = {}
         self.ticks = 0
         self.started_at: float | None = None
 
@@ -83,32 +91,36 @@ class TaskScheduler:
     async def _loop(self) -> None:
         while True:
             now = self._now()
-            await self._sleep(60 - now.second - now.microsecond / 1_000_000)
+            # A small margin keeps an early wake-up from landing in the previous minute.
+            await self._sleep(60.05 - now.second - now.microsecond / 1_000_000)
             self.tick(self._now())
 
     def tick(self, moment: datetime) -> None:
-        """Dispatch the jobs due at ``moment`` (rounded to the minute)."""
+        """Run the minute jobs and fire the reports scheduled in ``(previous tick, moment]``."""
         self.ticks += 1
+        previous = self._last_tick or moment - timedelta(minutes=1)
+        self._last_tick = moment
         if not self._minute_running:
             self._spawn(self._run_minute())
         else:
             self._logger.debug("dota2tracker: previous minute job still running, tick skipped")
-        if moment.minute != 0:
-            return
-        if (
-            self._daily is not None
-            and self._config.daily_report_switch
-            and moment.hour == self._config.daily_report_hours
-        ):
-            self._spawn(self._guard(self._daily, "daily"))
-        day, hour = self._config.weekly_report_day_hours
-        if (
-            self._weekly is not None
-            and self._config.weekly_report_switch
-            and cron_weekday(moment) == day % 7
-            and moment.hour == hour
-        ):
-            self._spawn(self._guard(self._weekly, "weekly"))
+        if self._daily is not None and self._config.daily_report_switch:
+            self._fire_if_due("daily", self._daily, previous, moment, self._config.daily_report_hours, None)
+        if self._weekly is not None and self._config.weekly_report_switch:
+            day, hour = self._config.weekly_report_day_hours
+            self._fire_if_due("weekly", self._weekly, previous, moment, hour, day % 7)
+
+    def _fire_if_due(
+        self, name: str, job: Job, previous: datetime, moment: datetime, hour: int, weekday: int | None
+    ) -> None:
+        # Today and yesterday cover a jump across midnight; larger jumps are not caught up.
+        for day in (moment.date() - timedelta(days=1), moment.date()):
+            if weekday is not None and (day.weekday() + 1) % 7 != weekday:
+                continue
+            scheduled = datetime.combine(day, time(hour), tzinfo=moment.tzinfo)
+            if previous < scheduled <= moment and self._fired.get(name) != day:
+                self._fired[name] = day
+                self._spawn(self._guard(job, name))
 
     def _spawn(self, coro: Awaitable[None]) -> None:
         task = asyncio.ensure_future(coro)

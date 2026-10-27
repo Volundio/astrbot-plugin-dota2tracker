@@ -8,7 +8,7 @@
 
 ## 安装
 
-1. 在 AstrBot 插件市场安装，或把本仓库放到 `data/plugins/astrbot_plugin_dota2tracker/`。
+1. 在 AstrBot 插件市场安装；或从 [Releases](https://github.com/Volundio/astrbot-plugin-dota2tracker/releases) 下载 `astrbot_plugin_dota2tracker-v<版本>.zip`，在 WebUI 插件页“从文件安装”；也可以把本仓库放到 `data/plugins/astrbot_plugin_dota2tracker/`。
 2. AstrBot 会按 `requirements.txt` 安装依赖（`httpx[socks]`、`aiosqlite` 等，大部分 AstrBot 已自带）。
 3. 在插件配置中填入 **STRATZ API Token**（<https://stratz.com/api> 获取）。未配置 Token 时插件可以加载，但无法查询，后台追踪也不会启动。
 4. 图片渲染使用 AstrBot 的文转图服务（`html_render`）。默认的在线 t2i 服务可以直接用；自建 t2i 服务时请在 AstrBot 配置中设置 `t2i_endpoint`。
@@ -73,6 +73,8 @@
 
 视图跟随 WebUI 的语言和亮暗主题。所有修改操作都会写入审计日志，导出文件和诊断包不包含 Token、代理认证等敏感信息。
 
+视图后端接口由 AstrBot 统一鉴权：需要已登录的 WebUI 会话，或带 `plugin` 权限范围的 API Key。持有这类 API Key 的调用方可以查看和修改订阅、绑定数据（含用户 ID 与 SteamID），请只发给可信的调用方。插件被禁用或卸载后，这些接口会一并移除。
+
 ## 备份与恢复
 
 在“订阅”视图点“导出”可下载频道、绑定和段位数据（不含 Token）。“导入”只接受本插件导出的文件：先预检显示将新增和跳过的条目，确认后才写入；已存在的绑定不会被覆盖，重复导入是安全的。也可以停止插件后直接备份 `dota2tracker.sqlite3`。
@@ -91,11 +93,16 @@
 ## 开发
 
 ```bash
+pip install -r requirements-dev.txt   # 测试、Ruff 与 AstrBot（适配层测试用）
 python -m pytest            # 单元/渲染/任务测试（不需要网络和 Token）
 ruff check . && ruff format --check .
 python scripts/preview_template.py match_1 zh-CN out.png   # 需要 Playwright，本地模拟 t2i
 python scripts/views/build.py   # 由 scripts/views/src 生成 views/*/index.html（勿直接修改生成文件）
 ```
+
+### 发布
+
+推送到 `main` 的提交修改了 `metadata.yaml` 中的版本号时，GitHub Actions（`.github/workflows/release.yml`）会自动：校验版本号与 `CHANGELOG.md`、运行 Ruff 和测试、打包插件 zip，并创建 `v<版本>` 标签与 Release。Release 中的 `astrbot_plugin_dota2tracker-v<版本>.zip` 可在 AstrBot WebUI 中通过“从文件安装”直接安装。
 
 ## 许可证与来源
 

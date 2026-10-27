@@ -218,3 +218,21 @@ def test_platform_denylist(monkeypatch):
     monkeypatch.setattr(binding, "UNSUPPORTED_PLATFORM_TYPES", ("webchat",))
     assert not BindingService.platform_supported("webchat")
     assert BindingService.platform_supported("discord")
+
+
+async def test_stop_cancels_background_member_refreshes(db):
+    started = asyncio.Event()
+
+    class SlowMembers:
+        async def group_member_ids(self, platform_id, group_id):
+            started.set()
+            await asyncio.sleep(3600)
+
+    service = BindingService(db, SlowMembers(), LOG)
+    await service.subscribe(chat(channel="g1"))
+    await asyncio.wait_for(started.wait(), 1)
+    assert len(service._tasks) == 1
+    await service.stop()
+    assert service._tasks == set()
+    await service.subscribe(chat(channel="g2"))  # after stop: no new background work
+    assert service._tasks == set()

@@ -53,7 +53,8 @@
         "import_invalid_extension": "Only .json files can be imported.",
         "import_too_large": "The file exceeds the 2 MB limit.",
         "import_invalid_json": "The file is not valid JSON.",
-        "import_invalid_format": "Unrecognised format: expected a file exported by this plugin."
+        "import_invalid_format": "Unrecognised format: expected a file exported by this plugin.",
+        "plugin_unavailable": "The plugin is not running (disabled or reloading). Please refresh later."
       },
       "noPlatform": "No messaging platform adapter is running; reports cannot be delivered.",
       "noOnebot": "No OneBot (aiocqhttp) adapter detected: tip recall, member filtering and group cards/avatars are unavailable; everything else works."

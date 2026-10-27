@@ -1,0 +1,130 @@
+# Publishes a GitHub release whenever the plugin version changes.
+#
+# Like the original project's publish/release workflows, the version file is
+# the trigger: pushing a commit to main that changes metadata.yaml checks the
+# version (metadata.yaml, dota2tracker/constants.py and pyproject.toml must
+# agree, CHANGELOG.md must have an entry), runs lint + tests, builds the
+# installable zip and creates the tag v<version> with a release whose notes
+# are the CHANGELOG.md section. Versions that already have a release are
+# skipped, so unrelated metadata edits do nothing. Run it manually
+# (workflow_dispatch) to retry a failed release.
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - metadata.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Check version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      publish: ${{ steps.existing.outputs.publish }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Read version
+        id: version
+        run: python scripts/release.py version >> "$GITHUB_OUTPUT"
+
+      - name: Skip versions that are already released
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists, nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Test (Python ${{ matrix.python }})
+    needs: prepare
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Test
+        run: python -m pytest -q
+
+  release:
+    name: Publish ${{ needs.prepare.outputs.tag }}
+    needs: [prepare, test]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build package and release notes
+        run: |
+          python scripts/release.py package dist
+          python scripts/release.py notes dist/release-notes.md
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          if [ "$PRERELEASE" = "true" ]; then kind=--prerelease; else kind=--latest; fi
+          # Creates the tag on this commit unless it already exists (then the tag is reused).
+          gh release create "$TAG" dist/*.zip dist/*.zip.sha256 \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes-file dist/release-notes.md \
+            "$kind"

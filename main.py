@@ -23,8 +23,8 @@ from astrbot.api.web import error_response, json_response, request
 from astrbot.core.star.filter.command import CommandFilter
 from astrbot.core.star.star_handler import star_handlers_registry
 
-from .dota2tracker.application.admin import AdminError, AdminService
-from .dota2tracker.application.models import ChatContext
+from .dota2tracker.application.admin import MAX_IMPORT_BYTES, AdminError, AdminService
+from .dota2tracker.application.models import ChatContext, OutgoingMessage
 from .dota2tracker.commands.registry import COMMANDS_BY_KEY, extract_raw_args
 from .dota2tracker.config import load_config
 from .dota2tracker.constants import ONEBOT_PLATFORM_TYPES, PLUGIN_NAME
@@ -32,6 +32,8 @@ from .dota2tracker.platform import AstrBotSender, EventTips, OneBotGateway, chat
 from .dota2tracker.plugin import Platform, Services
 
 PLUGIN_LOGGER: logging.Logger = logger  # AstrBot logger (std logging.Logger)
+#: Multipart framing allowance on top of the 2 MB import limit.
+UPLOAD_OVERHEAD_BYTES = 64 * 1024
 
 
 class Dota2TrackerPlugin(Star):
@@ -92,7 +94,17 @@ class Dota2TrackerPlugin(Star):
     async def on_astrbot_loaded(self) -> None:
         await self.services.start()
 
+    @filter.on_platform_loaded()
+    async def on_platform_loaded(self) -> None:
+        # Also covers a plugin (re)loaded while no adapter was running: tracking starts
+        # with the first platform instead of waiting for an AstrBot restart.
+        await self.services.start()
+
     async def terminate(self) -> None:
+        # AstrBot has no API to unregister web routes: drop ours so a disabled plugin
+        # does not answer with a closed service (reload re-registers in __init__).
+        apis = self.context.registered_web_apis
+        apis[:] = [api for api in apis if getattr(api[1], "_d2t_owner", None) is not self]
         await self.services.close()
 
     # ------------------------------------------------------------- commands
@@ -111,7 +123,13 @@ class Dota2TrackerPlugin(Star):
         return event.plain_result(
             self.services.i18n.t(self.services.i18n.default_locale, "dota2tracker.platform_unsupported")
             or "Dota2 Tracker is not available on this platform."
-        )
+        ).use_t2i(False)
+
+    @staticmethod
+    def _result(event: AstrMessageEvent, message: OutgoingMessage) -> Any:
+        # The plugin renders its own images; AstrBot's text-to-image option would replace
+        # the whole chain (images included) with a picture of the text.
+        return event.chain_result(to_chain(message).chain).use_t2i(False)
 
     async def _run(self, event: AstrMessageEvent, key: str) -> AsyncIterator[Any]:
         chat = chat_context(event)
@@ -123,7 +141,7 @@ class Dota2TrackerPlugin(Star):
         try:
             async for message in self.services.commands.run(key, chat, raw, tips):
                 if not message.empty:
-                    yield event.chain_result(to_chain(message).chain)
+                    yield self._result(event, message)
         finally:
             await tips.finish()
         event.stop_event()
@@ -136,7 +154,7 @@ class Dota2TrackerPlugin(Star):
             yield refusal
             return
         async for message in self.services.commands.root(chat):
-            yield event.chain_result(to_chain(message).chain)
+            yield self._result(event, message)
         event.stop_event()
 
     @filter.command("dota2tracker.help", alias={"DOTA2指南", "DOTA2帮助", "DOTA2说明"})
@@ -230,6 +248,8 @@ class Dota2TrackerPlugin(Star):
 
     def _wrap(self, handler: Callable[[], Awaitable[Any]]) -> Callable[[], Awaitable[Any]]:
         async def view() -> Any:
+            if not self.services.db.is_open:
+                return error_response("plugin_unavailable", status_code=503)
             try:
                 result = await handler()
             except AdminError as error:
@@ -241,6 +261,7 @@ class Dota2TrackerPlugin(Star):
                 return result
             return json_response({"status": "ok", "data": result})
 
+        view._d2t_owner = self  # type: ignore[attr-defined]
         return view
 
     @staticmethod
@@ -290,6 +311,10 @@ class Dota2TrackerPlugin(Star):
         return json_response(data, headers={"Content-Disposition": 'attachment; filename="dota2tracker-bindings.json"'})
 
     async def _read_upload(self) -> bytes:
+        # Refuse oversized bodies before the multipart parser spools them to disk.
+        length = request.headers.get("content-length")
+        if length and length.isdigit() and int(length) > MAX_IMPORT_BYTES + UPLOAD_OVERHEAD_BYTES:
+            raise AdminError("import_too_large", 413)
         files = await request.files()
         upload = files.get("file")
         if upload is None:
@@ -297,7 +322,7 @@ class Dota2TrackerPlugin(Star):
         name = Path(upload.filename or "").name.lower()
         if not name.endswith(".json"):
             raise AdminError("import_invalid_extension")
-        data = await upload.read(2 * 1024 * 1024 + 1)
+        data = await upload.read(MAX_IMPORT_BYTES + 1)
         await upload.close()
         return data
 

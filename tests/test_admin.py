@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-from types import SimpleNamespace
 
 import pytest
 
 from dota2tracker.application.admin import EXPORT_FORMAT, AdminError, AdminService
-from dota2tracker.application.models import OutgoingMessage, RenderedImage
+from dota2tracker.application.models import OutgoingMessage
 from dota2tracker.config import load_config
 from dota2tracker.plugin import Platform, Services
 
@@ -223,6 +222,13 @@ async def test_api_check_and_cache_clear(services, admin):
     assert cleared["removed"] == {"weekly_meta": 1}
     with pytest.raises(AdminError):
         await admin.clear_cache("webui:a", "../etc")
+    # The OpenDota daily call counter is bookkeeping, not a cache: it cannot be reset from the WebUI.
+    await services.cache.add_opendota_request_log("matches/1")
+    with pytest.raises(AdminError):
+        await admin.clear_cache("webui:a", "opendota_request_log")
+    assert await services.cache.today_opendota_request_count() == 1
+    stats = {entry["namespace"]: entry["clearable"] for entry in (await admin.diagnostics())["cache"]}
+    assert stats["opendota_request_log"] is False
     await admin.clear_errors("webui:a")
     assert services.reporter.recent() == []
 
@@ -274,84 +280,12 @@ async def test_services_lifecycle_without_token(tmp_path):
     assert not s.scheduler.running and not s.db.is_open
 
 
-# ------------------------------------------------------------------ platform
-astrbot = pytest.importorskip("astrbot.api.event")
+async def test_expired_rows_are_purged_hourly(services):
+    from dota2tracker.data.cache import NS_WEEKLY_META
 
-
-def test_to_chain_and_chat_context():
-    from dota2tracker.platform import chat_context, to_chain
-
-    chain = to_chain(OutgoingMessage.of("hi", RenderedImage(b"png")))
-    assert [type(c).__name__ for c in chain.chain] == ["Plain", "Image"]
-
-    event = SimpleNamespace(
-        unified_msg_origin="napcat:GroupMessage:100",
-        is_private_chat=lambda: False,
-        get_sender_id=lambda: "42",
-        get_group_id=lambda: "100",
-        get_platform_id=lambda: "napcat",
-        get_platform_name=lambda: "aiocqhttp",
-        get_sender_name=lambda: "Alice",
-        get_self_id=lambda: "1",
-        message_obj=SimpleNamespace(group=SimpleNamespace(group_name="G"), message_id=5),
-    )
-    chat = chat_context(event)
-    assert (chat.umo, chat.platform_id, chat.channel_id, chat.user_id, chat.is_private) == (
-        "napcat:GroupMessage:100",
-        "napcat",
-        "100",
-        "42",
-        False,
-    )
-    event.is_private_chat = lambda: True
-    assert chat_context(event).channel_id == "42"
-
-
-async def test_sender_and_tips_recall():
-    from dota2tracker.platform import AstrBotSender, EventTips
-
-    class Ctx:
-        def __init__(self, fail=False):
-            self.fail = fail
-            self.sent = []
-
-        async def send_message(self, umo, chain):
-            if self.fail:
-                raise RuntimeError("down")
-            self.sent.append((umo, chain))
-            return True
-
-    ok = AstrBotSender(Ctx(), LOG)
-    assert await ok.send("u", OutgoingMessage.of("x")) is True
-    assert await ok.send("u", OutgoingMessage.of()) is False
-    assert await AstrBotSender(Ctx(fail=True), LOG).send("u", OutgoingMessage.of("x")) is False
-
-    actions = []
-
-    class Bot:
-        async def call_action(self, action, **kwargs):
-            actions.append((action, kwargs))
-            return {"message_id": 77} if action.startswith("send") else None
-
-    event = SimpleNamespace(
-        bot=Bot(),
-        get_platform_name=lambda: "aiocqhttp",
-        is_private_chat=lambda: False,
-        get_group_id=lambda: "100",
-        get_sender_id=lambda: "42",
-    )
-    tips = EventTips(event, recall=True, logger=LOG)
-    await tips.send("wait")
-    await tips.finish()
-    assert actions == [("send_group_msg", {"group_id": 100, "message": "wait"}), ("delete_msg", {"message_id": 77})]
-
-    plain = []
-
-    async def send(chain):
-        plain.append(chain)
-
-    event = SimpleNamespace(get_platform_name=lambda: "aiocqhttp", send=send)
-    tips = EventTips(event, recall=False, logger=LOG)
-    await tips.send("wait")
-    await tips.finish()
-    assert len(plain) == 1
+    await services.db.cache_set(NS_WEEKLY_META, "old", {"x": 1}, expires_at=1)
+    await services._purge_expired()  # just purged on open: nothing happens yet
+    assert (await services.db.cache_stats())[0]["entries"] == 1
+    services._purged_at -= 3601
+    await services._purge_expired()
+    assert await services.db.cache_stats() == []

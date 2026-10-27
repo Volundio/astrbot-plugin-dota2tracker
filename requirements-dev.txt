@@ -1,0 +1,9 @@
+# Development / CI dependencies (runtime dependencies come from requirements.txt).
+-r requirements.txt
+pytest>=8.3
+pytest-asyncio>=0.24
+# Pinned so `ruff format --check` gives the same result locally and in CI.
+ruff==0.17.2
+# test_main.py / test_platform.py exercise the AstrBot adapter layer against the
+# AstrBot version the plugin was verified with (metadata.yaml: astrbot_version).
+AstrBot==4.29.3

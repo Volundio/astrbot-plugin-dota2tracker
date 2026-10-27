@@ -16,7 +16,7 @@ import httpx
 
 from ..constants import GRAPHQL_DIR
 from ..errors import GraphQLQueryError, wrap_fetch_error
-from .http import RequestQueue, build_client
+from .http import REQUEST_DEADLINE, RequestQueue, build_client
 
 __all__ = ["StratzAPI"]
 
@@ -158,11 +158,15 @@ class StratzAPI:
         async def task() -> Any:
             self.request_count += 1
             try:
-                response = await self._client.post(
-                    BASE_URL,
-                    content=json.dumps(payload),
-                    headers={"Authorization": f"Bearer {self._token}"},
-                )
+                # httpx's timeout applies per phase (connect/read/…); like the original's
+                # axios timeout, the whole request is bounded so a trickling response
+                # cannot hold the shared queue.
+                async with asyncio.timeout(REQUEST_DEADLINE):
+                    response = await self._client.post(
+                        BASE_URL,
+                        content=json.dumps(payload),
+                        headers={"Authorization": f"Bearer {self._token}"},
+                    )
                 response.raise_for_status()
                 result = response.json()
             except asyncio.CancelledError:

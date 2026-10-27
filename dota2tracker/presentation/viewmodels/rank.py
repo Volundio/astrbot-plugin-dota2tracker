@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import Callable
 from datetime import datetime
 from typing import Any
@@ -71,12 +72,16 @@ def build_rank_fun_view(
     """
     kind = "xi" if is_rising else "bei"
     key = "rank_fun_up_message" if is_rising else "rank_fun_down_message"
-    raw = t_html(f"dota2tracker.template.{key}", {"name": name})
+    # The name is inserted last, through an unguessable token, so a nickname that
+    # contains "CURR_PLACEHOLDER" & co. cannot move the rank/avatar markup.
+    name_token = f"D2TNAME{secrets.token_hex(8)}"
+    raw = t_html(f"dota2tracker.template.{key}", {"name": name_token})
     message = "" if raw is None else str(raw)
     avatar_html = f'<img src="{escape(_js_template(avatar))}" />'
     message = message.replace("AVATAR_PLACEHOLDER", avatar_html, 1)
     message = message.replace("PREV_PLACEHOLDER", _rank_html("prev", prev_rank, t), 1)
     message = message.replace("CURR_PLACEHOLDER", _rank_html("curr", curr_rank, t), 1)
+    message = message.replace(name_token, str(escape(_js_template(name))))
     return {
         "kind": kind,
         "background": assets.url(kind, None, "jpg"),

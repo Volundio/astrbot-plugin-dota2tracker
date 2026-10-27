@@ -45,3 +45,24 @@ def test_rank_fun_message_escapes_name(i18n, assets):
     assert view["curr"]["leader"] == "5"
     assert view["curr"]["medal"] == assets.url("medal_8c")
     assert view["prev"]["leader"] == ""
+
+
+def test_rank_fun_nickname_cannot_move_the_rank_markup(i18n, assets):
+    from dota2tracker.domain.rank import rank_display
+    from dota2tracker.presentation.viewmodels.rank import build_rank_fun_view
+
+    view = build_rank_fun_view(
+        "CURR_PLACEHOLDER<b>x</b>",
+        "https://a/b.png",
+        True,
+        rank_display({"rank": 15}),
+        rank_display({"rank": 21}),
+        "date",
+        lambda key, params=None: i18n.t("zh-CN", key, params),
+        lambda key, params=None: i18n.t_html("zh-CN", key, params),
+        assets,
+    )
+    message = str(view["message"])
+    assert "CURR_PLACEHOLDER&lt;b&gt;x&lt;/b&gt;" in message  # the name stays text
+    assert message.index('<span class="rank prev">') < message.index('<span class="rank curr">')
+    assert message.count('<span class="rank curr">') == 1

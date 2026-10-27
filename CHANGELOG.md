@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.2] - 2026-10-28
+
+修复低优先级问题，并新增自动发布流程。
+
+### 新增
+
+- 发布：版本号变化时由 GitHub Actions 自动校验、测试、打包插件 zip 并发布 Release，Release 中的 zip 可在 WebUI“从文件安装”。
+
+### 修复
+
+- 定时任务：日报和周报每天最多触发一次，系统时钟回拨或夏令时重复的一小时不再重复发送，时钟前跳或任务卡顿时会补发。
+- 定时任务：日期计算使用系统时区规则，夏令时切换当天的日报区间不再偏移一小时。
+- 战报推送：用 `-p` 先加入等待的比赛，群里仍会收到自动播报，且不会重复。
+- 战报推送：OpenDota 解析请求和等待日志按时间间隔触发，不再因等待中的比赛数量而永远不触发。
+- 网络：每个请求受 15 秒总时限约束，缓慢的响应不再长时间占用请求队列。
+- 存储：过期缓存每小时清理一次，长期运行时数据库不再持续增长。
+- 生命周期：成员缓存刷新任务在卸载插件时会被取消；插件在没有平台时重载，首个平台加载后即开始追踪。
+- 指令：非 OneBot 平台上提示消息发送失败时不再导致指令失败；私聊不再可能匹配到号码相同的群的绑定。
+- 指令：开启 AstrBot 文本转图片时，插件的回复和图片不会被替换。
+- 图片：Stratz 返回空的玩家账号数据时玩家图可以正常生成；整活段位播报的布局不再受昵称内容影响。
+- WebUI：清除缓存不再能重置 OpenDota 每日调用计数；超大导入文件在写入磁盘前即被拒绝；插件停用后移除接口，卸载期间的请求返回“插件未运行”。
+
+### Added
+
+- Release: When the version changes, GitHub Actions validates, tests and packages the plugin zip and publishes a release; the zip can be installed in the WebUI via "Install from File".
+
+### Fixed
+
+- Scheduler: Daily and weekly reports fire at most once per day; a clock stepping back or the repeated DST hour no longer sends them twice, and a clock jump forward or a stalled loop catches them up.
+- Scheduler: Dates use the system time zone rules, so the daily report window no longer shifts by an hour on DST change days.
+- Match reports: A match queued first with `-p` still gets the automatic group broadcast, without duplicates.
+- Match reports: OpenDota parse requests and waiting logs are time based and no longer depend on how many matches are waiting.
+- Network: Every request has a 15-second overall deadline, so slow responses no longer hold the request queue.
+- Storage: Expired cache rows are purged hourly instead of only at startup.
+- Lifecycle: Member cache refresh tasks are cancelled on unload; a plugin reloaded without any platform starts tracking when the first platform loads.
+- Commands: A failed tip message on non-OneBot platforms no longer fails the command; private chats can no longer match the bindings of a group with the same number.
+- Commands: With AstrBot's text-to-image enabled, the plugin's replies and images are no longer replaced.
+- Images: Player images render when Stratz returns an empty steam account; nicknames can no longer rearrange the fun rank broadcast.
+- WebUI: Clearing caches can no longer reset the OpenDota daily counter; oversized import files are rejected before being written to disk; routes are removed when the plugin is disabled and requests during unload answer "plugin not running".
+
+**Full Changelog**: https://github.com/Volundio/astrbot-plugin-dota2tracker/compare/v1.1.1...v1.1.2
+
 ## [1.1.1] - 2026-10-27
 
 全量代码审查后的缺陷修复。

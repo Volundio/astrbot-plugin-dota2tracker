@@ -120,8 +120,10 @@ function cacheCard(d) {
     rows.length ? h("div", { class: "table-wrap" }, h("table", { class: "responsive" },
       h("thead", {}, h("tr", {}, ["namespace", "entries", "bytes", "expired"].map((k) => h("th", { text: col(k) })), h("th", {}))),
       h("tbody", {}, rows.map((row) => {
-        const btn = h("button", { type: "button", class: "small danger", text: t("views.diagnostics.clear") });
-        btn.addEventListener("click", () => clearCache(row.namespace, btn));
+        // Bookkeeping namespaces (e.g. the OpenDota call counter) report `clearable: false`.
+        const btn = row.clearable === false ? null
+          : h("button", { type: "button", class: "small danger", text: t("views.diagnostics.clear") });
+        if (btn) btn.addEventListener("click", () => clearCache(row.namespace, btn));
         return h("tr", {},
           h("td", { "data-label": col("namespace") }, h("code", { text: row.namespace })),
           h("td", { "data-label": col("entries"), text: fmtNumber(row.entries) }),

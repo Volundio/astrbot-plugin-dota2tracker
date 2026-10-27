@@ -21,7 +21,20 @@ from ..presentation.images import ImageFactory
 from ..utils.timefmt import local_now, minus_days
 from .ports import MemberProfiles, MessageSender
 
-__all__ = ["ReportTask"]
+__all__ = ["ReportTask", "report_window"]
+
+
+def report_window(now: datetime, days: int = 1) -> tuple[datetime, datetime, datetime]:
+    """``(data_start, target, today)`` local midnights of the daily report.
+
+    The report covers ``[target, today)`` and compares it with
+    ``[data_start, target)``. Calendar arithmetic keeps ``now``'s zone, so the
+    boundaries stay at midnight across DST changes when ``now`` carries a
+    zone with rules (see :func:`dota2tracker.utils.timefmt.system_timezone`).
+    """
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    target = minus_days(today, days)
+    return minus_days(target, days), target, today
 
 
 class ReportTask:
@@ -75,10 +88,7 @@ class ReportTask:
     # ---------------------------------------------------------------- daily
     async def build_daily_bundles(self, days: int = 1) -> list[dict[str, Any]]:
         """``generateDailyReportBundles``: report data per subscribed channel."""
-        now = self._now()
-        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        target = minus_days(today, days)
-        data_start = minus_days(target, days)
+        data_start, target, today = report_window(self._now(), days)
         users = await self._bindings.active_players()
         if not users:
             return []

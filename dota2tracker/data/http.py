@@ -11,11 +11,13 @@ import httpx
 
 from ..errors import PluginStoppedError
 
-__all__ = ["RequestQueue", "build_client"]
+__all__ = ["DEFAULT_TIMEOUT", "REQUEST_DEADLINE", "RequestQueue", "build_client"]
 
 T = TypeVar("T")
 
 DEFAULT_TIMEOUT = 15.0
+#: Upper bound for one complete request (httpx's own timeout is per phase).
+REQUEST_DEADLINE = DEFAULT_TIMEOUT
 
 
 class RequestQueue:

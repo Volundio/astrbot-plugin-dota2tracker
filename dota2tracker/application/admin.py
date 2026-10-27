@@ -14,6 +14,7 @@ from typing import Any
 
 from ..commands.handlers import _valid_nickname
 from ..constants import PLUGIN_NAME, PLUGIN_VERSION, SUPPORTED_LOCALES, UPSTREAM_REPOSITORY, VERIFIED_PLATFORM_TYPES
+from ..data.cache import CLEARABLE_NAMESPACES
 from ..presentation.previews import PREVIEWS, PreviewContext, build_preview
 from ..presentation.renderer import TEMPLATES
 from .binding import STEAM_ID_PATTERN
@@ -291,7 +292,7 @@ class AdminService:
         return {
             "config": s.config.redacted(),
             "issues": [i.to_dict() for i in s.issues],
-            "cache": await s.cache.stats(),
+            "cache": await self.cache_stats(),
             "counts": await s.db.counts(),
             "schemaVersion": await s.db.schema_version(),
             "recentErrors": s.reporter.recent(),
@@ -323,16 +324,21 @@ class AdminService:
             "message": self.s.reporter.redact(message),
         }
 
+    async def cache_stats(self) -> list[dict[str, Any]]:
+        return [
+            {**entry, "clearable": entry["namespace"] in CLEARABLE_NAMESPACES} for entry in await self.s.cache.stats()
+        ]
+
     async def clear_cache(self, actor: str, namespace: str) -> dict[str, Any]:
-        known = {entry["namespace"] for entry in await self.s.cache.stats()}
-        if namespace not in known and namespace != "*expired":
+        # Only re-fetchable data; bookkeeping such as the OpenDota daily call counter is not clearable.
+        if namespace not in CLEARABLE_NAMESPACES and namespace != "*expired":
             raise AdminError("unknown_namespace", 404)
         if namespace == "*expired":
             removed = await self.s.cache.purge_expired()
         else:
             removed = {namespace: await self.s.cache.clear(namespace)}
         await self.s.db.add_audit(actor, "clear_cache", {"namespace": namespace, "removed": removed})
-        return {"removed": removed, "cache": await self.s.cache.stats()}
+        return {"removed": removed, "cache": await self.cache_stats()}
 
     async def clear_errors(self, actor: str) -> None:
         self.s.reporter.clear()

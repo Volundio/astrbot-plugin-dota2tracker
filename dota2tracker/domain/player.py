@@ -122,8 +122,9 @@ def extend_player_data(
     """``PlayerService.extendPlayerData`` returning a new player dict."""
     player = copy.deepcopy(player_query["player"])
     extra = (player_extra_query or {}).get("player") or {}
-    account = player.setdefault("steamAccount", {})
-    player.setdefault("matches", [])
+    # ``setdefault`` keeps an explicit ``null`` from the API; normalise both cases.
+    account = player["steamAccount"] = player.get("steamAccount") or {}
+    player["matches"] = [m for m in player.get("matches") or [] if m]
     if account.get("isAnonymous"):
         player["matches"].extend(_anonymous_matches(account.get("id"), constants))
 

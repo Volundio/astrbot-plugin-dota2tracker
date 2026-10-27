@@ -2,7 +2,7 @@
 # runtime dependencies from requirements.txt.
 [project]
 name = "astrbot-plugin-dota2tracker"
-version = "1.1.1"
+version = "1.1.2"
 description = "AstrBot port of koishi-plugin-dota2tracker"
 requires-python = ">=3.12"
 license = { text = "GPL-3.0-only" }

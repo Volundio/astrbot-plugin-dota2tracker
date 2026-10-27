@@ -100,7 +100,7 @@ class MatchWatcherTask:
             # Skip matches older than one day so long-idle players don't resurface ancient reports.
             if (match.get("startDateTime") or 0) <= now - ONE_DAY:
                 continue
-            if self._polling.is_pending(match["id"]) or match["id"] in sent:
+            if match["id"] in sent:
                 continue
             last_matches.append(match)
 
@@ -114,15 +114,22 @@ class MatchWatcherTask:
             for player in relevant:
                 by_channel.setdefault(player.channel_key, []).append(player)
 
+            # A match can already be pending because a user ran "查询比赛 <id> -p" first: the
+            # channels still get their broadcast, but never twice (target fix, the original
+            # skipped pending matches entirely).
+            already = self._polling.automatic_targets(int(match["id"]))
             subscribers: list[Subscriber] = []
             for key, players in by_channel.items():
                 first = players[0]
                 channel = channels.get(key)
+                umo = channel.umo if channel else first.umo
+                if umo in already:
+                    continue
                 subscribers.append(
                     Subscriber(
                         source="AUTOMATIC",
                         type="CHANNEL",
-                        umo=channel.umo if channel else first.umo,
+                        umo=umo,
                         platform=first.platform,
                         channel_id=first.channel_id,
                         language_tag=await self._locale(first.platform, first.channel_id),

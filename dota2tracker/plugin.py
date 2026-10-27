@@ -189,7 +189,7 @@ class Services:
         )
         self.scheduler = TaskScheduler(
             config,
-            every_minute=[self._refresh_members, self.watcher.discovery, self.polling.polling],
+            every_minute=[self._refresh_members, self._purge_expired, self.watcher.discovery, self.polling.polling],
             daily=self.reports.run_daily,
             weekly=self.reports.run_weekly,
             logger=logger,
@@ -209,6 +209,7 @@ class Services:
             reporter=self.reporter,
         )
         self._member_refresh_at = 0.0
+        self._purged_at = 0.0
 
     def _build_clients(self, proxy: str | None) -> None:
         config, logger = self.config, self.logger
@@ -241,6 +242,16 @@ class Services:
         self._member_refresh_at = loop.time()
         await self.bindings.refresh_all_member_caches()
 
+    async def _purge_expired(self) -> None:
+        """Delete expired cache rows and sent markers hourly (reads already ignore them)."""
+        loop = asyncio.get_running_loop()
+        if loop.time() - self._purged_at < 3600:
+            return
+        self._purged_at = loop.time()
+        removed = await self.cache.purge_expired()
+        if any(removed.values()):
+            self.logger.debug("dota2tracker: purged expired rows %s", removed)
+
     @property
     def can_track(self) -> bool:
         return self.config.has_stratz_token
@@ -250,6 +261,7 @@ class Services:
         if not self.db.is_open:
             await self.db.open()
             await self.cache.purge_expired()
+            self._purged_at = asyncio.get_running_loop().time()
             await self.polling.restore()
 
     async def start(self) -> None:
@@ -267,6 +279,7 @@ class Services:
         """Cancel tasks and close clients/storage (``Star.terminate``)."""
         await self.scheduler.stop()
         await self.polling.stop()
+        await self.bindings.stop()
         for client in (self.stratz, self.valve, self.opendota):
             if client is not None:
                 try:

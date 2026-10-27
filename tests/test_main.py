@@ -58,6 +58,20 @@ class FakeContext:
         return True
 
 
+class FakeResult:
+    """Stands in for AstrBot's MessageEventResult (records ``use_t2i``)."""
+
+    def __init__(self, kind, payload):
+        self.kind, self.payload, self.t2i = kind, payload, None
+
+    def use_t2i(self, value):
+        self.t2i = value
+        return self
+
+    def __iter__(self):
+        return iter((self.kind, self.payload))
+
+
 class FakeEvent:
     def __init__(self, text: str, *, platform: str = "aiocqhttp", private: bool = False, user: str = "42") -> None:
         self.text = text
@@ -96,10 +110,10 @@ class FakeEvent:
         return self.text
 
     def plain_result(self, text):
-        return ("plain", text)
+        return FakeResult("plain", text)
 
     def chain_result(self, chain):
-        return ("chain", chain)
+        return FakeResult("chain", chain)
 
     def stop_event(self):
         self.stopped = True
@@ -143,7 +157,10 @@ async def test_web_api_routes_registered(plugin):
 
 async def test_subscribe_via_alias_and_koishi_name(plugin):
     event = FakeEvent("订阅本群")
-    result = texts(await collect(plugin.cmd_subscribe(event)))
+    results = await collect(plugin.cmd_subscribe(event))
+    # AstrBot's text-to-image option must not replace the plugin's own replies/images.
+    assert results and all(r.t2i is False for r in results)
+    result = texts(results)
     assert result and event.stopped
     again = texts(await collect(plugin.cmd_subscribe(FakeEvent("dota2tracker.subscribe"))))
     assert again != result  # "already subscribed" text
@@ -248,3 +265,53 @@ async def test_web_api_wrapper_maps_errors(plugin):
 
     response = await plugin._wrap(broken)()
     assert response.status_code == 500 and b"secret" not in response.body
+
+
+# --------------------------------------------------------- 1.1.2 (low priority)
+async def test_terminate_removes_routes_and_closed_service_answers_503(tmp_path, monkeypatch):
+    from astrbot.api.star import StarTools
+
+    main = load_main()
+    monkeypatch.setattr(StarTools, "get_data_dir", classmethod(lambda cls, name=None: tmp_path / "d" / "p" / "x"))
+    context = FakeContext()
+    context.registered_web_apis.append(("/other_plugin/x", object(), ["GET"], ""))
+    instance = main.Dota2TrackerPlugin(context, {"stratz_api_token": "token"})
+    await instance.initialize()
+    status_view = next(api[1] for api in context.registered_web_apis if api[0].endswith("/status"))
+    await instance.terminate()
+    assert [api[0] for api in context.registered_web_apis] == ["/other_plugin/x"]
+    response = await status_view()  # a request that raced the unload
+    assert response.status_code == 503 and b"plugin_unavailable" in response.body
+
+
+async def test_oversized_upload_is_rejected_before_parsing(plugin, monkeypatch):
+    main = sys.modules[f"{PACKAGE}.main"]
+
+    class HugeRequest:
+        def __init__(self):
+            self.headers = {"content-length": str(50 * 1024 * 1024)}
+
+        async def files(self):
+            raise AssertionError("the body must not be parsed")
+
+    monkeypatch.setattr(main, "request", HugeRequest())
+    with pytest.raises(main.AdminError, match="import_too_large"):
+        await plugin._read_upload()
+
+
+async def test_tracking_starts_when_the_first_platform_loads(tmp_path, monkeypatch):
+    from astrbot.api.star import StarTools
+
+    main = load_main()
+    monkeypatch.setattr(StarTools, "get_data_dir", classmethod(lambda cls, name=None: tmp_path / "d" / "p" / "y"))
+    context = FakeContext()
+    context.platform_manager.platform_insts = []  # reloaded while no adapter runs
+    instance = main.Dota2TrackerPlugin(context, {"stratz_api_token": "token"})
+    try:
+        await instance.initialize()
+        assert not instance.services.scheduler.running
+        context.platform_manager.platform_insts.append(FakePlatform("napcat", "aiocqhttp"))
+        await instance.on_platform_loaded()
+        assert instance.services.scheduler.running
+    finally:
+        await instance.terminate()

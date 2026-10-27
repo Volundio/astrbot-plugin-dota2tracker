@@ -461,3 +461,26 @@ def test_opendota_ipv4_option():
     assert api._client._transport._pool._local_address == "0.0.0.0"
     with_proxy = OpenDotaAPI(force_ipv4=True, proxy="http://127.0.0.1:1")
     assert getattr(with_proxy._client._transport._pool, "_local_address", None) is None
+
+
+async def test_whole_request_is_bounded_by_the_deadline(monkeypatch):
+    """httpx's timeout is per phase; a slow response must still fail after REQUEST_DEADLINE."""
+    from dota2tracker.data import apis, stratz
+
+    monkeypatch.setattr(stratz, "REQUEST_DEADLINE", 0.05)
+    monkeypatch.setattr(apis, "REQUEST_DEADLINE", 0.05)
+
+    async def slow(request):
+        await asyncio.Event().wait()  # a response that never completes
+
+    api = StratzAPI(TOKEN, transport=httpx.MockTransport(slow))
+    with pytest.raises(NetworkError) as info:
+        await api.query_match_info(1)
+    assert info.value.error_type == "Timeout"
+    await api.aclose()
+
+    valve = ValveAPI(transport=httpx.MockTransport(slow))
+    with pytest.raises(NetworkError) as info:
+        await valve.query_item_list()
+    assert info.value.error_type == "Timeout"
+    await valve.aclose()

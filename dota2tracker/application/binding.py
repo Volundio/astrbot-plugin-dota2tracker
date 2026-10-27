@@ -36,6 +36,24 @@ class BindingService:
         self._members = members
         self._logger = logger
         self._member_cache: dict[str, set[str]] = {}
+        self._tasks: set[asyncio.Task[None]] = set()
+        self._stopped = False
+
+    def _refresh_later(self, platform: str, channel_id: str) -> None:
+        """Refresh one channel's member cache in the background (tracked, cancelled by :meth:`stop`)."""
+        if self._stopped:
+            return
+        task = asyncio.get_running_loop().create_task(self.refresh_member_cache(platform, channel_id))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def stop(self) -> None:
+        self._stopped = True
+        tasks = list(self._tasks)
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     # ------------------------------------------------------------ platform
     @staticmethod
@@ -87,7 +105,7 @@ class BindingService:
             ctx.umo, ctx.platform_id, ctx.platform_type, ctx.channel_id, ctx.group_name
         )
         if created:
-            asyncio.get_running_loop().create_task(self.refresh_member_cache(ctx.platform_id, ctx.channel_id))
+            self._refresh_later(ctx.platform_id, ctx.channel_id)
         return created
 
     async def unsubscribe(self, ctx: ChatContext) -> bool:
@@ -109,7 +127,7 @@ class BindingService:
             )
         except AlreadyBoundError:
             return None
-        asyncio.get_running_loop().create_task(self.refresh_member_cache(ctx.platform_id, ctx.channel_id))
+        self._refresh_later(ctx.platform_id, ctx.channel_id)
         return record
 
     async def unbind(self, ctx: ChatContext) -> bool:

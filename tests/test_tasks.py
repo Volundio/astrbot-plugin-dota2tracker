@@ -392,7 +392,7 @@ async def test_subscriber_added_during_publication_is_not_lost(db):
     release.set()
     await publishing
     assert task.is_pending(42)
-    assert [s.umo for s in task._pending[42].subscribers] == ["bot:FriendMessage:7"]
+    assert [s.umo for s in task._pending[42].subscribers if not s.done] == ["bot:FriendMessage:7"]
     await task.polling()
     assert [umo for umo, _ in sender.sent] == ["bot:GroupMessage:1", "bot:FriendMessage:7"]
     assert not task.is_pending(42)
@@ -417,7 +417,7 @@ async def test_reload_during_publication_only_resumes_remaining_destinations(db)
     resumed_sender = FakeSender()
     resumed = make_polling(db, matches, sender=resumed_sender)
     await resumed.restore()
-    assert [s.umo for s in resumed._pending[42].subscribers] == ["bot:GroupMessage:2"]
+    assert [s.umo for s in resumed._pending[42].subscribers if not s.done] == ["bot:GroupMessage:2"]
     await resumed.polling()
     assert [umo for umo, _ in resumed_sender.sent] == ["bot:GroupMessage:2"]  # group 1 is not sent twice
     await resumed.stop()
@@ -439,3 +439,129 @@ async def test_entries_without_data_expire(db):
     assert not task.is_pending(7) and await db.list_pending_matches() == []
     assert 7 in await CacheService(db, "test").sent_match_ids()  # not rediscovered by the watcher
     await task.stop()
+
+
+# --------------------------------------------------------- 1.1.2 (low priority)
+def _scheduler(config=None, calls=None):
+    calls = [] if calls is None else calls
+
+    def job(name):
+        async def run():
+            calls.append(name)
+
+        return run
+
+    config = config or PluginConfig(daily_report_switch=True, daily_report_hours=8, weekly_report_switch=True)
+    return TaskScheduler(config, every_minute=[], daily=job("daily"), weekly=job("weekly"), logger=LOG), calls
+
+
+async def _drain(scheduler):
+    await asyncio.sleep(0)
+    if scheduler._jobs:
+        await asyncio.gather(*scheduler._jobs)
+
+
+async def test_scheduler_catches_up_after_a_clock_jump_and_never_repeats():
+    scheduler, calls = _scheduler()
+    scheduler.tick(datetime(2025, 10, 28, 7, 58, tzinfo=TZ))
+    scheduler.tick(datetime(2025, 10, 28, 8, 30, tzinfo=TZ))  # NTP step / stalled loop over 08:00
+    await _drain(scheduler)
+    assert calls == ["daily"]
+    scheduler.tick(datetime(2025, 10, 28, 7, 59, tzinfo=TZ))  # clock steps back
+    scheduler.tick(datetime(2025, 10, 28, 8, 0, tzinfo=TZ))
+    await _drain(scheduler)
+    assert calls == ["daily"]  # not twice on the same day
+    scheduler.tick(datetime(2025, 10, 29, 8, 0, tzinfo=TZ))
+    await _drain(scheduler)
+    assert calls == ["daily", "daily"]
+
+
+async def test_scheduler_does_not_fire_reports_missed_before_start():
+    scheduler, calls = _scheduler()
+    scheduler.tick(datetime(2025, 10, 28, 8, 1, tzinfo=TZ))  # started at 08:00:30
+    await _drain(scheduler)
+    assert calls == []
+
+
+async def test_scheduler_repeated_dst_hour_fires_once():
+    from zoneinfo import ZoneInfo
+
+    new_york = ZoneInfo("America/New_York")
+    config = PluginConfig(daily_report_switch=True, daily_report_hours=1)
+    scheduler, calls = _scheduler(config)
+    # 2025-11-02: 01:00-01:59 happens twice (EDT, then EST).
+    scheduler.tick(datetime(2025, 11, 2, 0, 59, tzinfo=new_york))
+    scheduler.tick(datetime(2025, 11, 2, 1, 0, tzinfo=new_york))
+    scheduler.tick(datetime(2025, 11, 2, 1, 59, tzinfo=new_york))
+    scheduler.tick(datetime(2025, 11, 2, 1, 0, fold=1, tzinfo=new_york))
+    await _drain(scheduler)
+    assert calls == ["daily"]
+
+
+def test_report_window_spans_a_dst_change():
+    from zoneinfo import ZoneInfo
+
+    from dota2tracker.tasks.reports import report_window
+
+    new_york = ZoneInfo("America/New_York")
+    data_start, target, today = report_window(datetime(2025, 11, 3, 6, 0, tzinfo=new_york))
+    assert (target.hour, target.day, today.hour, today.day) == (0, 2, 0, 3)
+    assert today.timestamp() - target.timestamp() == 25 * 3600  # the day with the extra hour
+    assert target.timestamp() - data_start.timestamp() == 24 * 3600
+
+
+def test_system_timezone_follows_tz(monkeypatch):
+    from dota2tracker.utils import timefmt
+
+    timefmt.system_timezone.cache_clear()
+    try:
+        monkeypatch.setenv("TZ", "America/New_York")
+        assert str(timefmt.system_timezone()) == "America/New_York"
+        assert timefmt.local_now().tzinfo is timefmt.system_timezone()
+        timefmt.system_timezone.cache_clear()
+        monkeypatch.setenv("TZ", "CST-8")  # POSIX string: fall back to the fixed offset
+        assert timefmt.system_timezone() is None
+        assert timefmt.local_now().utcoffset() is not None
+    finally:
+        timefmt.system_timezone.cache_clear()
+
+
+async def test_opendota_parse_requests_do_not_depend_on_queue_length(db):
+    class FakeOpenDota:
+        def __init__(self):
+            self.requests = []
+
+        async def request_parse_match(self, match_id):
+            self.requests.append(match_id)
+            return True
+
+    now = [0.0]
+    opendota = FakeOpenDota()
+    config = PluginConfig(enable_opendota_fallback=True, data_parsing_timeout_minutes=60)
+    task = make_polling(db, FakeMatches({}), clock=lambda: now[0], config=config)
+    task._opendota = opendota
+    for match_id in range(1, 6):  # five pending matches: each is polled every 5 minutes
+        await task.add(match_id, [subscriber(f"bot:GroupMessage:{match_id}")])
+    now[0] = 60.0  # entry 1 is first polled one minute in, so its waits are 1, 6, 11, ... minutes
+    for _ in range(20):
+        await task.polling()
+        now[0] += 60
+    await asyncio.sleep(0)
+    assert sorted(set(opendota.requests)) == [1, 2, 3, 4, 5]
+    await task.stop()
+
+
+async def test_discovery_adds_the_group_broadcast_to_a_match_queued_by_a_command(db):
+    await _bound(db)
+    polling = make_polling(db, FakeMatches({}))
+    await polling.add(55, [subscriber("bot:FriendMessage:9", source="COMMAND")])  # "查询比赛 55 -p" first
+    watcher = make_watcher(db, FakeStratz([stratz_player(55, int(time.time()) - 600)]), polling)
+    await watcher.discovery()
+    await watcher.discovery()  # idempotent
+    umos = [s.umo for s in polling._pending[55].subscribers]
+    assert umos == ["bot:FriendMessage:9", "bot:GroupMessage:100"]
+    # Once the group has been served it is not queued again while the entry is still pending.
+    polling._pending[55].subscribers[1].done = True
+    await watcher.discovery()
+    assert len(polling._pending[55].subscribers) == 2
+    await polling.stop()
