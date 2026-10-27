@@ -16,7 +16,7 @@ def test_match_1_renders(strict_renderer, preview_context, locale, variant):
     html = strict_renderer.render_html("match_1", view, locale)
     assert "8000000001" in html
     assert html.count('class="box h-[320px]') == 10
-    assert "d2t-asset://" not in html  # every local image is embedded
+    assert "d2t-asset-" not in html  # every local image is embedded
     won = "获胜" if locale == "zh-CN" else "Won"
     assert won in html
 
@@ -47,7 +47,7 @@ def test_match_2_renders(strict_renderer, preview_context, template, locale, var
     ctx = preview_context(locale, variant)
     view = build_preview(template, ctx)
     html = strict_renderer.render_html(template, view, locale)
-    assert "d2t-asset://" not in html
+    assert "d2t-asset-" not in html
     assert "{{" not in html and "<%" not in html
     assert html.count('<div class="player ') == 10
     assert "Radiant<br>天辉" in html and "Dire<br>夜魇" in html

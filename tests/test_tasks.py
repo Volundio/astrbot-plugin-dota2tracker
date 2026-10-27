@@ -328,3 +328,114 @@ async def test_rank_fun_broadcast(db):
     assert call[0] == "rank_fun" and call[1] == "Alice" and call[3] is False  # falling
     assert call[6] == "2025/10/27 12时00分"
     assert sender.sent[0][1].images[0].template == "rank_fun"
+
+
+# ----------------------------------------------------------------- 1.1.1 fixes
+class FlakyImages(FakeImages):
+    def __init__(self, failures: int) -> None:
+        super().__init__()
+        self.failures = failures
+
+    async def match(self, match, locale, template):
+        if self.failures > 0:
+            self.failures -= 1
+            raise RuntimeError("t2i timeout")
+        return await super().match(match, locale, template)
+
+
+READY = {"match": {"id": 42, "parsedDateTime": 1, "players": []}}
+
+
+async def test_render_failure_keeps_the_match_pending_and_retries(db):
+    sender = FakeSender()
+    task = make_polling(db, FakeMatches({42: MatchResult("READY", 42, READY)}), sender=sender, images=FlakyImages(1))
+    await task.add(42, [subscriber("bot:GroupMessage:1")])
+    await task.polling()
+    assert sender.sent == [] and task.is_pending(42)
+    assert 42 not in await CacheService(db, "test").sent_match_ids()  # not marked as sent
+    await task.polling()
+    assert [umo for umo, _ in sender.sent] == ["bot:GroupMessage:1"]
+    assert not task.is_pending(42) and await db.list_pending_matches() == []
+    await task.stop()
+
+
+async def test_render_failures_give_up_after_max_attempts(db):
+    from dota2tracker.tasks.polling import MAX_PUBLISH_ATTEMPTS
+
+    sender = FakeSender()
+    task = make_polling(db, FakeMatches({42: MatchResult("READY", 42, READY)}), sender=sender, images=FlakyImages(99))
+    await task.add(42, [subscriber("bot:GroupMessage:1")])
+    for _ in range(MAX_PUBLISH_ATTEMPTS):
+        await task.polling()
+    assert sender.sent == [] and not task.is_pending(42)
+    assert 42 in await CacheService(db, "test").sent_match_ids()
+    await task.stop()
+
+
+async def test_subscriber_added_during_publication_is_not_lost(db):
+    gate = asyncio.Event()
+    release = asyncio.Event()
+
+    class SlowSender(FakeSender):
+        async def send(self, umo, message):
+            gate.set()
+            await release.wait()
+            return await super().send(umo, message)
+
+    sender = SlowSender()
+    task = make_polling(db, FakeMatches({42: MatchResult("READY", 42, READY)}), sender=sender)
+    await task.add(42, [subscriber("bot:GroupMessage:1")])
+    publishing = asyncio.create_task(task.polling())
+    await gate.wait()
+    # A user runs "查询比赛 42 -p" while the report is being sent.
+    await task.add(42, [subscriber("bot:FriendMessage:7", source="COMMAND")])
+    release.set()
+    await publishing
+    assert task.is_pending(42)
+    assert [s.umo for s in task._pending[42].subscribers] == ["bot:FriendMessage:7"]
+    await task.polling()
+    assert [umo for umo, _ in sender.sent] == ["bot:GroupMessage:1", "bot:FriendMessage:7"]
+    assert not task.is_pending(42)
+    await task.stop()
+
+
+async def test_reload_during_publication_only_resumes_remaining_destinations(db):
+    class CancelOnSecond(FakeSender):
+        async def send(self, umo, message):
+            if self.sent:
+                raise asyncio.CancelledError  # plugin terminated while sending
+            return await super().send(umo, message)
+
+    sender = CancelOnSecond()
+    matches = FakeMatches({42: MatchResult("READY", 42, READY)})
+    task = make_polling(db, matches, sender=sender)
+    await task.add(42, [subscriber("bot:GroupMessage:1"), subscriber("bot:GroupMessage:2")])
+    with pytest.raises(asyncio.CancelledError):
+        await task.polling()
+    await task.stop()
+
+    resumed_sender = FakeSender()
+    resumed = make_polling(db, matches, sender=resumed_sender)
+    await resumed.restore()
+    assert [s.umo for s in resumed._pending[42].subscribers] == ["bot:GroupMessage:2"]
+    await resumed.polling()
+    assert [umo for umo, _ in resumed_sender.sent] == ["bot:GroupMessage:2"]  # group 1 is not sent twice
+    await resumed.stop()
+
+
+async def test_entries_without_data_expire(db):
+    from dota2tracker.tasks.polling import PENDING_GRACE_SECONDS
+
+    now = [1000.0]
+    matches = FakeMatches({7: MatchResult("NOT_FOUND", 7)})
+    config = PluginConfig(data_parsing_timeout_minutes=10)
+    task = make_polling(db, matches, clock=lambda: now[0], config=config)
+    await task.add(7, [subscriber()])
+    now[0] += 600 + PENDING_GRACE_SECONDS - 60
+    await task.polling()
+    assert task.is_pending(7)
+    now[0] += 120
+    await task.polling()
+    assert not task.is_pending(7) and await db.list_pending_matches() == []
+    assert 7 in await CacheService(db, "test").sent_match_ids()  # not rediscovered by the watcher
+    await task.stop()

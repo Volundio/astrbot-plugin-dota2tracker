@@ -182,7 +182,8 @@
       "apply": "Apply import",
       "confirmImport": "This adds {channels} channel subscriptions and {players} bindings. Import now?",
       "imported": "Import completed",
-      "bestEffort": "{platform}: best effort"
+      "bestEffort": "{platform}: best effort",
+      "invalidRows": "{invalid} invalid row(s) were ignored."
     },
     "templates": {
       "title": "Templates",

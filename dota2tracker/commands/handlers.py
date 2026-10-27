@@ -30,7 +30,7 @@ from ..presentation.renderer import RenderError
 from ..utils.jsnum import has_line_terminator, utf16_length
 from ..utils.timefmt import local_now
 from .args import parse_args
-from .registry import COMMANDS_BY_KEY
+from .registry import COMMANDS, COMMANDS_BY_KEY, GROUP, CommandSpec, option_entries, wants_help
 
 __all__ = ["CommandHandlers", "PendingQueue", "TipMessenger"]
 
@@ -132,13 +132,74 @@ class CommandHandlers:
         self.reporter.report(error, f"command/{ctx.key}")
 
     async def run(self, key: str, chat: ChatContext, raw: str, tips: TipMessenger) -> Reply:
-        """Dispatch ``key`` (registry key) with the raw argument text."""
+        """Dispatch ``key`` (registry key) with the raw argument text.
+
+        ``-h`` / ``--help`` prints the command help like Koishi did. Any error
+        a handler does not turn into a message itself (storage unavailable
+        during a reload, …) is logged and answered with a generic text instead
+        of reaching the chat as a raw exception (target fix).
+        """
         spec = COMMANDS_BY_KEY[key]
-        parsed = parse_args(raw, spec.options)
-        handler: Callable[..., AsyncIterator[OutgoingMessage]] = getattr(self, "cmd_" + key.replace("-", "_"))
-        ctx = await self._context(chat, key, tips)
-        async for message in handler(ctx, parsed.args, parsed.options):
-            yield message
+        locale = self.i18n.default_locale
+        try:
+            ctx = await self._context(chat, key, tips)
+            locale = ctx.locale
+            parsed = parse_args(raw, spec.options)
+            if wants_help(parsed.options):
+                yield OutgoingMessage.of(self.command_help(spec, locale))
+                return
+            handler: Callable[..., AsyncIterator[OutgoingMessage]] = getattr(self, "cmd_" + key.replace("-", "_"))
+            async for message in handler(ctx, parsed.args, parsed.options):
+                yield message
+        except Exception as error:
+            self.reporter.report(error, f"command/{key}")
+            yield OutgoingMessage.of(self.i18n.text(locale, "dota2tracker.command_failed"))
+
+    async def root(self, chat: ChatContext) -> Reply:
+        """``dota2tracker`` (with or without ``-h``): Koishi's sub-command overview."""
+        try:
+            locale = await self.locale_for(chat)
+        except Exception as error:
+            self.reporter.report(error, "command/root")
+            locale = self.i18n.default_locale
+        yield OutgoingMessage.of(self.root_help(locale))
+
+    # ------------------------------------------------------------ help text
+    def _raw(self, locale: str, key: str) -> str:
+        value = self.i18n.raw(locale, key)
+        return value if isinstance(value, str) else ""
+
+    def command_help(self, spec: CommandSpec, locale: str) -> str:
+        """Plain-text help of one command (Koishi ``<command> -h``)."""
+        label = "dota2tracker.cli_help."
+        lines = [self.i18n.text(locale, label + "command", [f"{spec.legacy_name} {spec.arguments}".strip()])]
+        if spec.aliases:
+            lines.append(self.i18n.text(locale, label + "aliases", ["、".join(spec.aliases)]))
+        for part in ("description", "usage"):
+            text = self.i18n.t(locale, f"{spec.i18n_prefix}.{part}")
+            if text:
+                lines.append(text)
+        options = option_entries(lambda key: self._raw(locale, key), spec)
+        if options:
+            lines.append(self.i18n.text(locale, label + "options"))
+            lines.extend(f"    {syntax}  {description}" for syntax, description in options)
+        examples = self.i18n.t(locale, f"{spec.i18n_prefix}.examples")
+        if examples:
+            lines.append(self.i18n.text(locale, label + "examples"))
+            lines.extend(f"    {example}" for example in examples.split("\n") if example)
+        return "\n".join(lines)
+
+    def root_help(self, locale: str) -> str:
+        label = "dota2tracker.cli_help."
+        lines = [self.i18n.text(locale, label + "command", [GROUP])]
+        description = self.i18n.t(locale, f"commands.{GROUP}.description")
+        if description:
+            lines.append(description)
+        lines.append(self.i18n.text(locale, label + "subcommands"))
+        for spec in COMMANDS:
+            summary = self.i18n.t(locale, f"{spec.i18n_prefix}.description") or ""
+            lines.append(f"    {spec.legacy_name}  {summary}".rstrip())
+        return "\n".join(lines)
 
     # -------------------------------------------------------------- commands
     async def cmd_help(self, ctx: _Context, args: list[str], options: dict[str, Any]) -> Reply:

@@ -276,3 +276,71 @@ def test_legacy_combinations():
     assert combos["Alias/n2"]["winCount"] == 1
     assert combos["Alias"]["winCount"] == 0 and len(combos["Alias"]["matches"]) == 1
     assert combos["n2"]["winCount"] == 0
+
+
+# ----------------------------------------------------------------- 1.1.1 fixes
+def test_negative_mvp_scores_still_build_the_report(constants):
+    """A day of bad games (MVP score < -1 because of a negative IMP) used to crash the spotlight lookup."""
+    matches = [match(7, [player(1, False, d=10, imp=-40)], radiant_win=True)]
+    bundles = run(matches, [user(1)], [ext(7, {1: (-4.5, 0, [])})], constants)
+    report = bundles[0]["report"]
+    assert report["spotlights"]["mvp"]["type"] == "MVP"
+    assert report["spotlights"]["mvp"]["player"]["kda"].startswith("0/10/0")
+
+
+def test_report_window_has_an_end(constants):
+    """Matches after the reported day belong to the next report (they were counted twice)."""
+    tomorrow = int(TARGET.timestamp()) + 86400 + 60
+    matches = [match(1, [player(1, k=1)]), match(2, [player(1, k=9)], start=tomorrow)]
+    report = run(matches, [user(1)], [], constants)[0]["report"]
+    assert report["headerStats"]["matches"]["value"] == 1
+    assert report["headerStats"]["kills"]["value"] == "1"
+    explicit = format_daily_report_bundles(
+        data_for(matches, [1]),
+        [user(1)],
+        [],
+        constants,
+        TARGET,
+        {"p:c1": ReportTranslator(t, "en-US", str)},
+        str,
+        str,
+        "footer",
+        end_date=datetime.fromtimestamp(tomorrow + 1, UTC),
+    )
+    assert explicit[0]["report"]["headerStats"]["matches"]["value"] == 2
+
+
+def test_one_broken_channel_does_not_stop_the_others(constants):
+    # Stratz omitted player 2 from match 5: looking up the player's own entry fails.
+    matches = [match(4, [player(1, k=3)]), match(5, [player(3)])]
+    data = data_for(matches, [1])
+    data["players"].append({"steamAccount": {"id": 2}, "matches": [matches[1]]})
+    data["players"].append(None)
+    users = [user(1, channel="ok"), user(2, channel="broken")]
+    translators = {key: ReportTranslator(t, "en-US", str) for key in ("p:ok", "p:broken")}
+    errors = []
+    bundles = format_daily_report_bundles(
+        data, users, [], constants, TARGET, translators, str, str, "f", on_error=lambda key, e: errors.append(key)
+    )
+    assert [b["channelId"] for b in bundles] == ["ok"]
+    assert errors == ["p:broken"]
+    with pytest.raises(LookupError):
+        format_daily_report_bundles(data, users, [], constants, TARGET, translators, str, str, "f")
+
+
+def test_legacy_report_isolates_broken_bindings():
+    channel_ok = SimpleNamespace(platform="p", channel_id="ok")
+    channel_bad = SimpleNamespace(platform="p", channel_id="bad")
+    good = user(1, uid=1, channel="ok")
+    bad = user(2, uid=2, channel="bad")
+    players_data = [
+        {"steamAccount": {"id": 1, "name": "one"}, "matches": [match(1, [player(1, k=2)])]},
+        {"steamAccount": {"id": 2, "name": "two"}, "matches": [match(2, [player(9)])]},
+        None,
+    ]
+    errors = []
+    results = build_legacy_report(
+        [channel_ok, channel_bad], [good, bad], players_data, {}, on_error=lambda key, e: errors.append(key)
+    )
+    assert [r["channel"].channel_id for r in results] == ["ok"]
+    assert errors == ["p:bad"]

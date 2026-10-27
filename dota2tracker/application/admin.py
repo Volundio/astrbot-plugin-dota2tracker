@@ -16,6 +16,7 @@ from ..commands.handlers import _valid_nickname
 from ..constants import PLUGIN_NAME, PLUGIN_VERSION, SUPPORTED_LOCALES, UPSTREAM_REPOSITORY, VERIFIED_PLATFORM_TYPES
 from ..presentation.previews import PREVIEWS, PreviewContext, build_preview
 from ..presentation.renderer import TEMPLATES
+from .binding import STEAM_ID_PATTERN
 
 __all__ = ["EXPORT_FORMAT", "AdminError", "AdminService"]
 
@@ -31,6 +32,50 @@ PREVIEW_VARIANTS: dict[str, tuple[str, ...]] = {
     "hero_of_the_day": ("", "lifetime", "anonymous"),
     "daily_legacy": ("", "hideCombi"),
 }
+
+
+def _text(value: Any) -> str | None:
+    """Non-empty string field (numbers from hand-edited files are accepted)."""
+    if isinstance(value, bool) or not isinstance(value, (str, int)):
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _clean_channel(row: Any) -> dict[str, Any] | None:
+    if not isinstance(row, dict):
+        return None
+    fields = {key: _text(row.get(key)) for key in ("umo", "platform", "platform_type", "channel_id")}
+    if None in fields.values():
+        return None
+    locale = row.get("locale")
+    name = row.get("name")
+    return {
+        **fields,
+        "subscribed": bool(row.get("subscribed")),
+        "locale": locale if locale in SUPPORTED_LOCALES else None,
+        "name": name if isinstance(name, str) else "",
+    }
+
+
+def _clean_player(row: Any) -> dict[str, Any] | None:
+    if not isinstance(row, dict):
+        return None
+    fields = {key: _text(row.get(key)) for key in ("umo", "platform", "channel_id", "user_id")}
+    steam_id = row.get("steam_id")
+    if None in fields.values() or isinstance(steam_id, bool) or not isinstance(steam_id, (str, int)):
+        return None
+    if not STEAM_ID_PATTERN.match(str(steam_id).strip()):
+        return None
+    nickname = row.get("nickname")
+    nickname = nickname if isinstance(nickname, str) and _valid_nickname(nickname) else ""
+    rank = row.get("rank")
+    return {
+        **fields,
+        "steam_id": int(str(steam_id).strip()),
+        "nickname": nickname,
+        "rank": rank if isinstance(rank, dict) else {},
+    }
 
 
 class AdminError(Exception):
@@ -172,7 +217,13 @@ class AdminService:
 
     @staticmethod
     def parse_import(raw: bytes) -> dict[str, Any]:
-        """Validate and normalise a file produced by :meth:`export_data` into ``{channels, players}``."""
+        """Validate a file produced by :meth:`export_data`.
+
+        Returns ``{channels, players, invalid}``: rows that pass the same
+        rules as the chat commands (non-empty UMO/ids, SteamID ``^[0-9]{1,11}$``,
+        20-unit nickname) in normalised form, and the number of rejected rows.
+        Everything is validated before anything is written.
+        """
         if len(raw) > MAX_IMPORT_BYTES:
             raise AdminError("import_too_large", 413)
         try:
@@ -181,63 +232,24 @@ class AdminService:
             raise AdminError("import_invalid_json") from error
         if not isinstance(data, dict) or data.get("format") != EXPORT_FORMAT:
             raise AdminError("import_invalid_format")
-        channels, players = data.get("channels") or [], data.get("players") or []
-        clean_channels = [c for c in channels if isinstance(c, dict) and c.get("platform") and c.get("channel_id")]
-        clean_players = []
-        for p in players:
-            if not isinstance(p, dict) or not p.get("platform") or not p.get("channel_id") or not p.get("user_id"):
-                continue
-            try:
-                steam_id = int(p.get("steam_id"))
-            except (TypeError, ValueError):
-                continue
-            nickname = str(p.get("nickname") or "")
-            clean_players.append({**p, "steam_id": steam_id, "nickname": nickname if _valid_nickname(nickname) else ""})
-        return {"channels": clean_channels, "players": clean_players}
+        channels, players = data.get("channels"), data.get("players")
+        if not isinstance(channels, list) or not isinstance(players, list):
+            raise AdminError("import_invalid_format")
+        clean_channels = [c for c in map(_clean_channel, channels) if c is not None]
+        clean_players = [p for p in map(_clean_player, players) if p is not None]
+        invalid = len(channels) - len(clean_channels) + len(players) - len(clean_players)
+        return {"channels": clean_channels, "players": clean_players, "invalid": invalid}
 
     async def import_data(self, actor: str, raw: bytes, *, dry_run: bool) -> dict[str, Any]:
-        """Idempotent restore of an export: existing bindings are kept, never overwritten."""
+        """Restore an export in one transaction: all rows or none, existing data never overwritten."""
         payload = self.parse_import(raw)
-        db = self.s.db
-        report = {"channelsAdded": 0, "channelsSkipped": 0, "playersAdded": 0, "playersSkipped": 0, "dryRun": dry_run}
-        for channel in payload["channels"]:
-            existing = await db.get_channel(channel["platform"], channel["channel_id"])
-            if existing is not None and (existing.subscribed or not channel.get("subscribed")):
-                report["channelsSkipped"] += 1
-                continue
-            report["channelsAdded"] += 1
-            if dry_run:
-                continue
-            if channel.get("subscribed", True):
-                await db.subscribe_channel(
-                    channel.get("umo") or (existing.umo if existing else ""),
-                    channel["platform"],
-                    channel.get("platform_type") or "aiocqhttp",
-                    channel["channel_id"],
-                    channel.get("name") or "",
-                )
-            stored = await db.get_channel(channel["platform"], channel["channel_id"])
-            if stored is not None and channel.get("locale") in SUPPORTED_LOCALES:
-                await db.set_channel_locale(stored.id, channel["locale"])
-        for player in payload["players"]:
-            if await db.get_player(player["platform"], player["channel_id"], player["user_id"]) is not None:
-                report["playersSkipped"] += 1
-                continue
-            report["playersAdded"] += 1
-            if dry_run:
-                continue
-            record = await db.bind_player(
-                player.get("umo") or "",
-                player["platform"],
-                player["channel_id"],
-                player["user_id"],
-                player["steam_id"],
-                player["nickname"],
-            )
-            if player.get("rank"):
-                await db.set_player_rank(record.id, player["rank"])
+        report: dict[str, Any] = await self.s.db.restore_bindings(
+            payload["channels"], payload["players"], dry_run=dry_run
+        )
+        report["invalid"] = payload["invalid"]
         if not dry_run:
-            await db.add_audit(actor, "import", {k: v for k, v in report.items() if k != "dryRun"})
+            await self.s.db.add_audit(actor, "import", dict(report))
+        report["dryRun"] = dry_run
         return report
 
     # -------------------------------------------------------------- previews

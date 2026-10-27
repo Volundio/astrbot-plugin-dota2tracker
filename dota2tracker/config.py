@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, fields
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from .constants import SUPPORTED_LOCALES
 
@@ -189,6 +190,18 @@ class _Reader:
         return tuple(result)
 
 
+PROXY_SCHEMES = ("http", "https", "socks5", "socks5h")
+
+
+def valid_proxy_url(value: str) -> bool:
+    """Schemes accepted by httpx proxies, with a host part."""
+    try:
+        parsed = urlsplit(value)
+        return parsed.scheme.lower() in PROXY_SCHEMES and bool(parsed.hostname)
+    except ValueError:
+        return False
+
+
 def load_config(raw: Mapping[str, Any] | None) -> tuple[PluginConfig, list[ConfigIssue]]:
     """Convert the AstrBot plugin config into :class:`PluginConfig` and issues."""
     reader = _Reader(raw or {})
@@ -206,8 +219,15 @@ def load_config(raw: Mapping[str, Any] | None) -> tuple[PluginConfig, list[Confi
     opendota_key = reader.string("opendota_api_key")
     ip_stack = reader.choice("opendota_ip_stack", defaults.opendota_ip_stack, ("auto", "ipv4"))
     proxy = reader.string("proxy_address")
-    if proxy and "://" not in proxy:
-        reader.warn("proxy_address", "format", "代理地址缺少协议前缀（如 http:// 或 socks5://），可能无法使用。")
+    if proxy and not valid_proxy_url(proxy):
+        # The value itself is secret (may contain credentials) and is never echoed.
+        reader.error(
+            "proxy_address",
+            "format",
+            "代理地址格式无效（需以 http://、https://、socks5:// 或 socks5h:// 开头并包含主机地址），"
+            "已忽略代理，直接连接。",
+        )
+        proxy = ""
     if enable_opendota and proxy and ip_stack == "ipv4":
         reader.warn("opendota_ip_stack", "ignored", "已配置代理，OpenDota 的 IPv4 强制选项将被忽略（与原插件一致）。")
 

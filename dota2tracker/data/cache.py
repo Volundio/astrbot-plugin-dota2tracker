@@ -104,6 +104,10 @@ class CacheService:
     async def mark_match_sent(self, match_id: int) -> None:
         await self._db.mark_match_sent(match_id, DAYS_30)
 
+    async def finish_pending_match(self, match_id: int) -> None:
+        """Remove the pending entry and write the 30-day sent marker in one transaction."""
+        await self._db.finish_pending_match(match_id, DAYS_30)
+
     async def sent_match_ids(self) -> set[int]:
         return await self._db.sent_match_ids()
 

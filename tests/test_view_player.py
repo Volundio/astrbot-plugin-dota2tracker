@@ -14,7 +14,7 @@ def test_player_1_renders(strict_renderer, preview_context, locale, variant):
     view = build_preview("player_1", preview_context(locale, variant))
     html = strict_renderer.render_html("player_1", view, locale)
     assert html.count('<tr class="match ') == 25
-    assert "d2t-asset://" not in html
+    assert "d2t-asset-" not in html
     assert html.count('class="blur-overlay"') == (3 if variant == "anonymous" else 0)
     if variant == "hero":
         assert 'class="hero_name"' in html

@@ -88,18 +88,14 @@ class Services:
         self.db = Database(self.data_dir / "dota2tracker.sqlite3", logger)
         self.cache = CacheService(self.db, PLUGIN_VERSION)
         self.files = FileService(self.data_dir, logger)
-        proxy = config.proxy_address or None
-        self.stratz = StratzAPI(config.stratz_api_token, proxy=proxy, logger=logger, translate=self.i18n.gt)
-        self.valve = ValveAPI(proxy=proxy, language_of=I18nService.valve_language)
-        self.opendota: OpenDotaAPI | None = None
-        if config.enable_opendota_fallback:
-            self.opendota = OpenDotaAPI(
-                api_key=config.opendota_api_key,
-                proxy=proxy,
-                force_ipv4=config.opendota_ip_stack == "ipv4",
-                record_usage=self.cache.add_opendota_request_log,
-                logger=logger,
+        try:
+            self._build_clients(config.proxy_address or None)
+        except ValueError:
+            # httpx rejected the proxy: keep the plugin (and its WebUI) usable without it.
+            self.issues.append(
+                ConfigIssue("error", "proxy_address", "rejected", "代理地址无法使用，已忽略代理，直接连接。")
             )
+            self._build_clients(None)
         self.static_data = StaticDataService(
             self.valve, self.cache, self.files, lambda: self.config.patch_notes_retrieval_depth
         )
@@ -213,6 +209,20 @@ class Services:
             reporter=self.reporter,
         )
         self._member_refresh_at = 0.0
+
+    def _build_clients(self, proxy: str | None) -> None:
+        config, logger = self.config, self.logger
+        self.stratz = StratzAPI(config.stratz_api_token, proxy=proxy, logger=logger, translate=self.i18n.gt)
+        self.valve = ValveAPI(proxy=proxy, language_of=I18nService.valve_language)
+        self.opendota: OpenDotaAPI | None = None
+        if config.enable_opendota_fallback:
+            self.opendota = OpenDotaAPI(
+                api_key=config.opendota_api_key,
+                proxy=proxy,
+                force_ipv4=config.opendota_ip_stack == "ipv4",
+                record_usage=self.cache.add_opendota_request_log,
+                logger=logger,
+            )
 
     def _render_options(self) -> dict[str, Any]:
         options: dict[str, Any] = {

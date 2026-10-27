@@ -11,7 +11,7 @@ from typing import Any
 
 from ..data.static import DotaConstants
 from ..utils.jsnum import js_to_fixed, js_truthy, round_to_decimal_places, to_locale_string
-from ..utils.timefmt import luxon_format
+from ..utils.timefmt import add_calendar, luxon_format
 
 __all__ = [
     "ReportTranslator",
@@ -22,6 +22,7 @@ __all__ = [
 ]
 
 HeroImage = Callable[[str], str]
+ErrorHandler = Callable[[str, Exception], None]
 
 
 @dataclass
@@ -61,12 +62,17 @@ def _group_users_by_channel(users: Iterable[Any]) -> dict[str, list[Any]]:
     return groups
 
 
-def _squad_stats(squad_data: list[dict[str, Any]], squad_ids: list[Any], target_seconds: float) -> dict[str, Any]:
+def _squad_stats(
+    squad_data: list[dict[str, Any]], squad_ids: list[Any], target_seconds: float, end_seconds: float
+) -> dict[str, Any]:
     current: dict[Any, dict[str, Any]] = {}
     previous: dict[Any, dict[str, Any]] = {}
     for player in squad_data:
         for match in player.get("matches") or []:
-            (current if _n(match.get("startDateTime")) >= target_seconds else previous)[match.get("id")] = match
+            start = _n(match.get("startDateTime"))
+            if start >= end_seconds:
+                continue  # belongs to the next report (target fix, see DEVELOPMENT.md §9.5)
+            (current if start >= target_seconds else previous)[match.get("id")] = match
 
     def calc(matches: dict[Any, dict[str, Any]]) -> dict[str, Any]:
         total = len(matches)
@@ -116,13 +122,16 @@ def _process_player(
     player_data: dict[str, Any],
     constants: DotaConstants,
     target_seconds: float,
+    end_seconds: float,
     extensions: list[dict[str, Any]],
     hero_image: HeroImage,
 ) -> dict[str, Any]:
     wins = kills = deaths = assists = 0
     hero_damage = tower_damage = networth = 0
     kda_sum = mvp_sum = 0.0
-    best_score, worst_ratio = -1.0, math.inf
+    # Target fix: MVP scores can be negative (IMP weighs in); starting at -1 left
+    # bestMatchId unset for a day of bad games and the spotlight lookup crashed.
+    best_score, worst_ratio = -math.inf, math.inf
     best_kda, worst_kda = -1.0, math.inf
     best_match = worst_match = 0
     best_utility, best_utility_match = -1, 0
@@ -133,7 +142,8 @@ def _process_player(
     steam_id = user.steam_id
 
     for match in player_data.get("matches") or []:
-        if _n(match.get("startDateTime")) < target_seconds:
+        start = _n(match.get("startDateTime"))
+        if start < target_seconds or start >= end_seconds:
             continue
         count += 1
         own = _find_self(match, steam_id)
@@ -338,130 +348,172 @@ def format_daily_report_bundles(
     hero_image: HeroImage,
     hero_banner: HeroImage,
     footer_id: str,
+    *,
+    end_date: datetime | None = None,
+    on_error: ErrorHandler | None = None,
 ) -> list[dict[str, Any]]:
-    """Return ``[{platform, channelId, report}]`` – one daily report per channel."""
+    """Return ``[{platform, channelId, report}]`` – one daily report per channel.
+
+    The report covers ``target_date <= start < end_date`` (``end_date``
+    defaults to one calendar day later); earlier matches form the comparison
+    period. A failing channel is passed to ``on_error`` and skipped so the
+    other channels still get their report (re-raised when ``on_error`` is
+    ``None``).
+    """
     target_seconds = target_date.timestamp()
+    end_seconds = (end_date or add_calendar(target_date, days=1)).timestamp()
     bundles = []
     all_players = data.get("players") or []
     for key, squad_users in _group_users_by_channel(users).items():
-        platform, channel_id = key.split(":", 1)
-        translator = translators[key]
-        t = translator.t
-        squad_ids = [u.steam_id for u in squad_users]
-        squad_data = [p for p in all_players if _account_id(p) in squad_ids]
-        if not squad_data:
-            continue
-        squad = _squad_stats(squad_data, squad_ids, target_seconds)
-        if squad["totalMatches"] == 0:
-            continue
-
-        rows: list[dict[str, Any]] = []
-        stats: list[dict[str, Any]] = []
-        impacts: list[dict[str, Any]] = []
-        for user in squad_users:
-            player_data = next((p for p in squad_data if _account_id(p) == user.steam_id), None)
-            if not player_data or not player_data.get("matches"):
-                continue
-            processed = _process_player(user, player_data, constants, target_seconds, extensions, hero_image)
-            if processed["impact"]["matchCount"] == 0:
-                continue
-            rows.append(processed["row"])
-            stats.append(processed["stats"])
-            impacts.append(processed["impact"])
-        if not rows:
-            continue
-        _impact_percentages(impacts)
-
-        def card(
-            stat: dict[str, Any],
-            card_type: str,
-            match_key: str,
-            squad_data: list[dict[str, Any]] = squad_data,
-            translator: ReportTranslator = translator,
-        ) -> dict[str, Any]:
-            player_data = next(p for p in squad_data if _account_id(p) == stat["steamId"])
-            return build_spotlight_card(
-                player_data, card_type, stat[match_key], extensions, constants, translator, hero_banner
+        try:
+            bundle = _channel_daily_report(
+                key,
+                squad_users,
+                all_players,
+                extensions,
+                constants,
+                target_date,
+                target_seconds,
+                end_seconds,
+                translators[key],
+                hero_image,
+                hero_banner,
+                footer_id,
             )
-
-        cards = []
-        stats.sort(key=lambda s: (-s["maxMvpScore"], -s["avgKda"]))
-        mvp_card = card(stats[0], "MVP", "bestMatchId")
-        cards.append(mvp_card)
-
-        lvp_card = None
-        lvp_candidates = [s for s in stats if s["worstMatchId"] > 0]
-        if lvp_candidates:
-            worst = lvp_candidates[0]
-            for current in lvp_candidates[1:]:
-                if current["minLvpRatio"] < worst["minLvpRatio"] or (
-                    current["minLvpRatio"] == worst["minLvpRatio"] and current["avgKda"] < worst["avgKda"]
-                ):
-                    worst = current
-            lvp_card = card(worst, "LVP", "worstMatchId")
-            cards.append(lvp_card)
-
-        for card_type, match_key, value_key in (
-            ("UTILITY", "bestUtilityMatchId", "maxUtilityScore"),
-            ("HEALER", "bestHealingMatchId", "maxHealing"),
-            ("DEMOLISHER", "bestTowerDamageMatchId", "maxTowerDamage"),
-        ):
-            candidates = [s for s in stats if s[match_key] > 0]
-            if candidates:
-                candidates.sort(key=lambda s, vk=value_key: (-s[vk], -s["avgKda"]))
-                cards.append(card(candidates[0], card_type, match_key))
-
-        rows.sort(key=lambda r: (-float(r["mvpScore"]), -float(r["kda"]["ratio"])))
-        for index, row in enumerate(rows):
-            row["rank"] = index + 1
-
-        prefix = "dota2tracker.template.report.daily."
-        win_diff = squad["winRateDiff"]
-        report = {
-            "meta": {
-                "date": luxon_format(target_date, t(prefix + "meta.date_format"), translator.locale),
-                "summary": t(prefix + "meta.summary", [channel_id]),
-                "footerId": footer_id,
-            },
-            "headerStats": {
-                "matches": {
-                    "value": squad["totalMatches"],
-                    "subtext": t(
-                        prefix + "stats.matches_subtext",
-                        [squad["totalWins"], squad["totalMatches"] - squad["totalWins"]],
-                    ),
-                },
-                "winRate": {
-                    "value": f"{js_to_fixed(squad['winRate'], 1)}%",
-                    "subtext": (
-                        f"{t(prefix + 'stats.vs_yesterday')} {'▲' if win_diff >= 0 else '▼'} "
-                        f"{js_to_fixed(abs(win_diff), 1)}%"
-                        if squad["hasPreviousMatches"]
-                        else "---"
-                    ),
-                    "isPositive": win_diff >= 0,
-                    "isWinRateAbove50": squad["winRate"] >= 50,
-                    "hasComparison": squad["hasPreviousMatches"],
-                },
-                "kills": {
-                    "value": to_locale_string(squad["totalKills"]),
-                    "subtext": t(prefix + "stats.kills_avg", [js_to_fixed(squad["avgKills"], 1)]),
-                },
-                "duration": {
-                    "value": format_duration(squad["totalDuration"]),
-                    "subtext": f"{t(prefix + 'stats.avg_time')} {format_duration(squad['avgDuration'])}",
-                },
-            },
-            "spotlights": {
-                "cards": cards,
-                "mvp": mvp_card,
-                "secondary": cards[1] if len(cards) > 1 else None,
-                "lvp": lvp_card,
-            },
-            "squad": rows,
-        }
-        bundles.append({"platform": platform, "channelId": channel_id, "report": report})
+        except Exception as error:
+            if on_error is None:
+                raise
+            on_error(key, error)
+            continue
+        if bundle is not None:
+            bundles.append(bundle)
     return bundles
+
+
+def _channel_daily_report(
+    key: str,
+    squad_users: list[Any],
+    all_players: list[dict[str, Any]],
+    extensions: list[dict[str, Any]],
+    constants: DotaConstants,
+    target_date: datetime,
+    target_seconds: float,
+    end_seconds: float,
+    translator: ReportTranslator,
+    hero_image: HeroImage,
+    hero_banner: HeroImage,
+    footer_id: str,
+) -> dict[str, Any] | None:
+    platform, channel_id = key.split(":", 1)
+    t = translator.t
+    squad_ids = [u.steam_id for u in squad_users]
+    squad_data = [p for p in all_players if p and _account_id(p) in squad_ids]
+    if not squad_data:
+        return None
+    squad = _squad_stats(squad_data, squad_ids, target_seconds, end_seconds)
+    if squad["totalMatches"] == 0:
+        return None
+
+    rows: list[dict[str, Any]] = []
+    stats: list[dict[str, Any]] = []
+    impacts: list[dict[str, Any]] = []
+    for user in squad_users:
+        player_data = next((p for p in squad_data if _account_id(p) == user.steam_id), None)
+        if not player_data or not player_data.get("matches"):
+            continue
+        processed = _process_player(user, player_data, constants, target_seconds, end_seconds, extensions, hero_image)
+        if processed["impact"]["matchCount"] == 0:
+            continue
+        rows.append(processed["row"])
+        stats.append(processed["stats"])
+        impacts.append(processed["impact"])
+    if not rows:
+        return None
+    _impact_percentages(impacts)
+
+    def card(stat: dict[str, Any], card_type: str, match_key: str) -> dict[str, Any]:
+        player_data = next(p for p in squad_data if _account_id(p) == stat["steamId"])
+        return build_spotlight_card(
+            player_data, card_type, stat[match_key], extensions, constants, translator, hero_banner
+        )
+
+    cards = []
+    stats.sort(key=lambda s: (-s["maxMvpScore"], -s["avgKda"]))
+    mvp_card = card(stats[0], "MVP", "bestMatchId")
+    cards.append(mvp_card)
+
+    lvp_card = None
+    lvp_candidates = [s for s in stats if s["worstMatchId"] > 0]
+    if lvp_candidates:
+        worst = lvp_candidates[0]
+        for current in lvp_candidates[1:]:
+            if current["minLvpRatio"] < worst["minLvpRatio"] or (
+                current["minLvpRatio"] == worst["minLvpRatio"] and current["avgKda"] < worst["avgKda"]
+            ):
+                worst = current
+        lvp_card = card(worst, "LVP", "worstMatchId")
+        cards.append(lvp_card)
+
+    for card_type, match_key, value_key in (
+        ("UTILITY", "bestUtilityMatchId", "maxUtilityScore"),
+        ("HEALER", "bestHealingMatchId", "maxHealing"),
+        ("DEMOLISHER", "bestTowerDamageMatchId", "maxTowerDamage"),
+    ):
+        candidates = [s for s in stats if s[match_key] > 0]
+        if candidates:
+            candidates.sort(key=lambda s, vk=value_key: (-s[vk], -s["avgKda"]))
+            cards.append(card(candidates[0], card_type, match_key))
+
+    rows.sort(key=lambda r: (-float(r["mvpScore"]), -float(r["kda"]["ratio"])))
+    for index, row in enumerate(rows):
+        row["rank"] = index + 1
+
+    prefix = "dota2tracker.template.report.daily."
+    win_diff = squad["winRateDiff"]
+    report = {
+        "meta": {
+            "date": luxon_format(target_date, t(prefix + "meta.date_format"), translator.locale),
+            "summary": t(prefix + "meta.summary", [channel_id]),
+            "footerId": footer_id,
+        },
+        "headerStats": {
+            "matches": {
+                "value": squad["totalMatches"],
+                "subtext": t(
+                    prefix + "stats.matches_subtext",
+                    [squad["totalWins"], squad["totalMatches"] - squad["totalWins"]],
+                ),
+            },
+            "winRate": {
+                "value": f"{js_to_fixed(squad['winRate'], 1)}%",
+                "subtext": (
+                    f"{t(prefix + 'stats.vs_yesterday')} {'▲' if win_diff >= 0 else '▼'} "
+                    f"{js_to_fixed(abs(win_diff), 1)}%"
+                    if squad["hasPreviousMatches"]
+                    else "---"
+                ),
+                "isPositive": win_diff >= 0,
+                "isWinRateAbove50": squad["winRate"] >= 50,
+                "hasComparison": squad["hasPreviousMatches"],
+            },
+            "kills": {
+                "value": to_locale_string(squad["totalKills"]),
+                "subtext": t(prefix + "stats.kills_avg", [js_to_fixed(squad["avgKills"], 1)]),
+            },
+            "duration": {
+                "value": format_duration(squad["totalDuration"]),
+                "subtext": f"{t(prefix + 'stats.avg_time')} {format_duration(squad['avgDuration'])}",
+            },
+        },
+        "spotlights": {
+            "cards": cards,
+            "mvp": mvp_card,
+            "secondary": cards[1] if len(cards) > 1 else None,
+            "lvp": lvp_card,
+        },
+        "squad": rows,
+    }
+    return {"platform": platform, "channelId": channel_id, "report": report}
 
 
 # ------------------------------------------------------------- legacy weekly
@@ -470,13 +522,23 @@ def build_legacy_report(
     bindings: list[Any],
     players_data: list[dict[str, Any]],
     names: dict[int, str],
+    *,
+    on_error: ErrorHandler | None = None,
 ) -> list[dict[str, Any]]:
     """Per-channel data for the legacy ``daily_legacy`` template.
 
     ``names`` maps binding primary keys to the display name resolved by the
-    caller (nickname → group card → Steam name).
+    caller (nickname → group card → Steam name). Inconsistent data for one
+    binding or channel is passed to ``on_error`` (keyed ``platform:channel``)
+    and skipped; it is re-raised when ``on_error`` is ``None``.
     """
-    players = [p for p in players_data if len(p.get("matches") or []) > 0]
+
+    def failed(key: str, error: Exception) -> None:
+        if on_error is None:
+            raise error
+        on_error(key, error)
+
+    players = [p for p in players_data if p and len(p.get("matches") or []) > 0]
     matches: list[dict[str, Any]] = []
     seen: set[Any] = set()
     for player in players:
@@ -490,62 +552,75 @@ def build_legacy_report(
         data = next((p for p in players if _account_id(p) == binding.steam_id), None)
         if data is None:
             continue
-        own_matches = data.get("matches") or []
-        total = len(own_matches)
-
-        own_id = _account_id(data)
-
-        def own(match: dict[str, Any], steam_id: Any = own_id) -> dict[str, Any]:
-            return _find_self(match, steam_id)
-
-        win_count = sum(1 for m in own_matches if m.get("didRadiantWin") == own(m).get("isRadiant"))
-        avg_kills = round_to_decimal_places(sum(_n(own(m).get("kills")) for m in own_matches) / total, 2)
-        avg_deaths = round_to_decimal_places(sum(_n(own(m).get("deaths")) for m in own_matches) / total, 2)
-        avg_assists = round_to_decimal_places(sum(_n(own(m).get("assists")) for m in own_matches) / total, 2)
-        enriched.append(
-            {
-                "binding": binding,
-                "steamId": binding.steam_id,
-                "platform": binding.platform,
-                "channelId": binding.channel_id,
-                "steamAccount": data.get("steamAccount") or {},
-                "matches": own_matches,
-                "name": names.get(binding.id) or (data.get("steamAccount") or {}).get("name"),
-                "winCount": win_count,
-                "loseCount": total - win_count,
-                "avgKills": avg_kills,
-                "avgDeaths": avg_deaths,
-                "avgAssists": avg_assists,
-                "avgKDA": round_to_decimal_places((avg_kills + avg_assists) / (avg_deaths or 1), 2),
-                "avgImp": round_to_decimal_places(sum(_n(own(m).get("imp")) for m in own_matches) / total, 0),
-            }
-        )
+        try:
+            enriched.append(_legacy_player(binding, data, names))
+        except Exception as error:
+            failed(f"{binding.platform}:{binding.channel_id}", error)
 
     results = []
     for channel in channels:
         current = [e for e in enriched if e["platform"] == channel.platform and e["channelId"] == channel.channel_id]
         if not current:
             continue
-        ids = [e["steamId"] for e in current]
-        combinations: dict[str, dict[str, Any]] = {}
-        for match in matches:
-            sorted_ids = sorted(_account_id(p) for p in match.get("players") or [] if _account_id(p) in ids)
-            key = ",".join(str(i) for i in sorted_ids)
-            if key not in combinations:
-                members = [e for e in current if e["steamId"] in sorted_ids]
-                if members:
-                    first = _find_self(match, members[0]["steamId"])
-                    combinations[key] = {
-                        "players": members,
-                        "name": "/".join(str(m["name"]) for m in members),
-                        "winCount": 1 if match.get("didRadiantWin") == first.get("isRadiant") else 0,
-                        "matches": [match],
-                    }
-            else:
-                combo = combinations[key]
-                combo["matches"].append(match)
-                first = _find_self(match, combo["players"][0]["steamId"])
-                combo["winCount"] += 1 if match.get("didRadiantWin") == first.get("isRadiant") else 0
+        try:
+            combinations = _legacy_combinations(current, matches)
+        except Exception as error:
+            failed(f"{channel.platform}:{channel.channel_id}", error)
+            continue
         ordered = sorted(current, key=lambda e: (-len(e["matches"]), _n(e["steamAccount"].get("id"))))
-        results.append({"channel": channel, "players": ordered, "combinations": list(combinations.values())})
+        results.append({"channel": channel, "players": ordered, "combinations": combinations})
     return results
+
+
+def _legacy_player(binding: Any, data: dict[str, Any], names: dict[int, str]) -> dict[str, Any]:
+    own_matches = data.get("matches") or []
+    total = len(own_matches)
+    steam_id = _account_id(data)
+
+    def own(match: dict[str, Any]) -> dict[str, Any]:
+        return _find_self(match, steam_id)
+
+    win_count = sum(1 for m in own_matches if m.get("didRadiantWin") == own(m).get("isRadiant"))
+    avg_kills = round_to_decimal_places(sum(_n(own(m).get("kills")) for m in own_matches) / total, 2)
+    avg_deaths = round_to_decimal_places(sum(_n(own(m).get("deaths")) for m in own_matches) / total, 2)
+    avg_assists = round_to_decimal_places(sum(_n(own(m).get("assists")) for m in own_matches) / total, 2)
+    return {
+        "binding": binding,
+        "steamId": binding.steam_id,
+        "platform": binding.platform,
+        "channelId": binding.channel_id,
+        "steamAccount": data.get("steamAccount") or {},
+        "matches": own_matches,
+        "name": names.get(binding.id) or (data.get("steamAccount") or {}).get("name"),
+        "winCount": win_count,
+        "loseCount": total - win_count,
+        "avgKills": avg_kills,
+        "avgDeaths": avg_deaths,
+        "avgAssists": avg_assists,
+        "avgKDA": round_to_decimal_places((avg_kills + avg_assists) / (avg_deaths or 1), 2),
+        "avgImp": round_to_decimal_places(sum(_n(own(m).get("imp")) for m in own_matches) / total, 0),
+    }
+
+
+def _legacy_combinations(current: list[dict[str, Any]], matches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    ids = [e["steamId"] for e in current]
+    combinations: dict[str, dict[str, Any]] = {}
+    for match in matches:
+        sorted_ids = sorted(_account_id(p) for p in match.get("players") or [] if _account_id(p) in ids)
+        key = ",".join(str(i) for i in sorted_ids)
+        if key not in combinations:
+            members = [e for e in current if e["steamId"] in sorted_ids]
+            if members:
+                first = _find_self(match, members[0]["steamId"])
+                combinations[key] = {
+                    "players": members,
+                    "name": "/".join(str(m["name"]) for m in members),
+                    "winCount": 1 if match.get("didRadiantWin") == first.get("isRadiant") else 0,
+                    "matches": [match],
+                }
+        else:
+            combo = combinations[key]
+            combo["matches"].append(match)
+            first = _find_self(match, combo["players"][0]["steamId"])
+            combo["winCount"] += 1 if match.get("didRadiantWin") == first.get("isRadiant") else 0
+    return list(combinations.values())

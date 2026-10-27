@@ -53,6 +53,7 @@ Thumbs.db
 # ---- Secrets ----
 .env
 .env.*
-
+AGENTS.md
+DEVELOPMENT.md
 /AGENTS.md
 /DEVELOPMENT.md

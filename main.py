@@ -20,8 +20,11 @@ from astrbot.api import AstrBotConfig, logger
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, StarTools
 from astrbot.api.web import error_response, json_response, request
+from astrbot.core.star.filter.command import CommandFilter
+from astrbot.core.star.star_handler import star_handlers_registry
 
 from .dota2tracker.application.admin import AdminError, AdminService
+from .dota2tracker.application.models import ChatContext
 from .dota2tracker.commands.registry import COMMANDS_BY_KEY, extract_raw_args
 from .dota2tracker.config import load_config
 from .dota2tracker.constants import ONEBOT_PLATFORM_TYPES, PLUGIN_NAME
@@ -93,16 +96,30 @@ class Dota2TrackerPlugin(Star):
         await self.services.close()
 
     # ------------------------------------------------------------- commands
+    def _command_names(self, key: str) -> list[str]:
+        """Current trigger names of the handler (follows renames in AstrBot's command management)."""
+        handler_name = "cmd_" + key.replace("-", "_")
+        metadata = star_handlers_registry.get_handler_by_full_name(f"{type(self).__module__}_{handler_name}")
+        for event_filter in metadata.event_filters if metadata else []:
+            if isinstance(event_filter, CommandFilter):
+                return list(event_filter.get_complete_command_names())
+        return list(COMMANDS_BY_KEY[key].names)
+
+    def _unsupported(self, event: AstrMessageEvent, chat: ChatContext) -> Any | None:
+        if self.services.bindings.platform_supported(chat.platform_type):
+            return None
+        return event.plain_result(
+            self.services.i18n.t(self.services.i18n.default_locale, "dota2tracker.platform_unsupported")
+            or "Dota2 Tracker is not available on this platform."
+        )
+
     async def _run(self, event: AstrMessageEvent, key: str) -> AsyncIterator[Any]:
         chat = chat_context(event)
-        if not self.services.bindings.platform_supported(chat.platform_type):
-            yield event.plain_result(
-                self.services.i18n.t(self.services.i18n.default_locale, "dota2tracker.platform_unsupported")
-                or "Dota2 Tracker is not available on this platform."
-            )
+        if (refusal := self._unsupported(event, chat)) is not None:
+            yield refusal
             return
         tips = EventTips(event, recall=self.services.config.auto_recall_tips, logger=PLUGIN_LOGGER)
-        raw = extract_raw_args(event.get_message_str(), COMMANDS_BY_KEY[key])
+        raw = extract_raw_args(event.get_message_str(), self._command_names(key))
         try:
             async for message in self.services.commands.run(key, chat, raw, tips):
                 if not message.empty:
@@ -111,23 +128,20 @@ class Dota2TrackerPlugin(Star):
             await tips.finish()
         event.stop_event()
 
-    @filter.command_group("dota2tracker")
-    def dota2tracker(self) -> None:
-        """Dota2 Tracker"""
-
-    @dota2tracker.command("help")
-    async def group_help(self, event: AstrMessageEvent):
-        async for r in self._run(event, "help"):
-            yield r
+    @filter.command("dota2tracker")
+    async def cmd_root(self, event: AstrMessageEvent):
+        """Sub-command overview (Koishi ``dota2tracker`` / ``dota2tracker -h``)."""
+        chat = chat_context(event)
+        if (refusal := self._unsupported(event, chat)) is not None:
+            yield refusal
+            return
+        async for message in self.services.commands.root(chat):
+            yield event.chain_result(to_chain(message).chain)
+        event.stop_event()
 
     @filter.command("dota2tracker.help", alias={"DOTA2指南", "DOTA2帮助", "DOTA2说明"})
     async def cmd_help(self, event: AstrMessageEvent):
         async for r in self._run(event, "help"):
-            yield r
-
-    @dota2tracker.command("subscribe")
-    async def group_subscribe(self, event: AstrMessageEvent):
-        async for r in self._run(event, "subscribe"):
             yield r
 
     @filter.command("dota2tracker.subscribe", alias={"订阅本群"})
@@ -135,19 +149,9 @@ class Dota2TrackerPlugin(Star):
         async for r in self._run(event, "subscribe"):
             yield r
 
-    @dota2tracker.command("unsubscribe")
-    async def group_unsubscribe(self, event: AstrMessageEvent):
-        async for r in self._run(event, "unsubscribe"):
-            yield r
-
     @filter.command("dota2tracker.unsubscribe", alias={"取消订阅"})
     async def cmd_unsubscribe(self, event: AstrMessageEvent):
         async for r in self._run(event, "unsubscribe"):
-            yield r
-
-    @dota2tracker.command("bind")
-    async def group_bind(self, event: AstrMessageEvent):
-        async for r in self._run(event, "bind"):
             yield r
 
     @filter.command("dota2tracker.bind", alias={"绑定"})
@@ -155,19 +159,9 @@ class Dota2TrackerPlugin(Star):
         async for r in self._run(event, "bind"):
             yield r
 
-    @dota2tracker.command("unbind")
-    async def group_unbind(self, event: AstrMessageEvent):
-        async for r in self._run(event, "unbind"):
-            yield r
-
     @filter.command("dota2tracker.unbind", alias={"取消绑定"})
     async def cmd_unbind(self, event: AstrMessageEvent):
         async for r in self._run(event, "unbind"):
-            yield r
-
-    @dota2tracker.command("rename")
-    async def group_rename(self, event: AstrMessageEvent):
-        async for r in self._run(event, "rename"):
             yield r
 
     @filter.command("dota2tracker.rename", alias={"改名"})
@@ -175,19 +169,9 @@ class Dota2TrackerPlugin(Star):
         async for r in self._run(event, "rename"):
             yield r
 
-    @dota2tracker.command("query-members")
-    async def group_query_members(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-members"):
-            yield r
-
     @filter.command("dota2tracker.query-members", alias={"查询群友"})
     async def cmd_query_members(self, event: AstrMessageEvent):
         async for r in self._run(event, "query-members"):
-            yield r
-
-    @dota2tracker.command("query-match")
-    async def group_query_match(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-match"):
             yield r
 
     @filter.command("dota2tracker.query-match", alias={"查询比赛"})
@@ -195,19 +179,9 @@ class Dota2TrackerPlugin(Star):
         async for r in self._run(event, "query-match"):
             yield r
 
-    @dota2tracker.command("query-recent-match")
-    async def group_query_recent_match(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-recent-match"):
-            yield r
-
     @filter.command("dota2tracker.query-recent-match", alias={"查询最近比赛"})
     async def cmd_query_recent_match(self, event: AstrMessageEvent):
         async for r in self._run(event, "query-recent-match"):
-            yield r
-
-    @dota2tracker.command("query-player")
-    async def group_query_player(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-player"):
             yield r
 
     @filter.command("dota2tracker.query-player", alias={"查询玩家"})
@@ -215,29 +189,14 @@ class Dota2TrackerPlugin(Star):
         async for r in self._run(event, "query-player"):
             yield r
 
-    @dota2tracker.command("query-hero")
-    async def group_query_hero(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-hero"):
-            yield r
-
     @filter.command("dota2tracker.query-hero", alias={"查询英雄"})
     async def cmd_query_hero(self, event: AstrMessageEvent):
         async for r in self._run(event, "query-hero"):
             yield r
 
-    @dota2tracker.command("query-item")
-    async def group_query_item(self, event: AstrMessageEvent):
-        async for r in self._run(event, "query-item"):
-            yield r
-
     @filter.command("dota2tracker.query-item", alias={"查询物品"})
     async def cmd_query_item(self, event: AstrMessageEvent):
         async for r in self._run(event, "query-item"):
-            yield r
-
-    @dota2tracker.command("hero-of-the-day")
-    async def group_hero_of_the_day(self, event: AstrMessageEvent):
-        async for r in self._run(event, "hero-of-the-day"):
             yield r
 
     @filter.command("dota2tracker.hero-of-the-day", alias={"今日英雄"})

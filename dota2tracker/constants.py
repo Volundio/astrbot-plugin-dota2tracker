@@ -6,7 +6,7 @@ from pathlib import Path
 
 PLUGIN_NAME = "astrbot_plugin_dota2tracker"
 PLUGIN_DISPLAY_NAME = "Dota2 Tracker"
-PLUGIN_VERSION = "1.1.0"
+PLUGIN_VERSION = "1.1.1"
 #: Upstream project this plugin is ported from (GPL-3.0).
 UPSTREAM_REPOSITORY = "https://github.com/sjtdev/koishi-plugin-dota2tracker"
 UPSTREAM_DOCS = "https://sjtdev.github.io/koishi-plugin-dota2tracker/"

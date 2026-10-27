@@ -138,3 +138,17 @@ def test_hero_of_the_day_preview_variants(strict_renderer, preview_context, vari
     if variant == "":
         assert view["type"] == "PERSONALIZED" and len(view["pool"]) == 10
         assert sum(hero["name"].endswith("*") for hero in view["pool"]) == 3
+
+
+def test_user_text_cannot_forge_asset_placeholders(strict_renderer, preview_context, assets):
+    """A nickname that looks like an asset reference stays plain text (no image data spliced in)."""
+    from dota2tracker.presentation.previews import build_preview
+
+    baseline = strict_renderer.render_html("members", build_preview("members", preview_context()), "zh-CN")
+    data = build_preview("members", preview_context())
+    forged = "d2t-asset://xi.jpg"  # the scheme used before 1.1.1
+    data["members"][0]["name"] = forged
+    html = strict_renderer.render_html("members", data, "zh-CN")
+    assert forged in html
+    assert assets.scheme not in html
+    assert html.count("data:image/") == baseline.count("data:image/")

@@ -182,7 +182,8 @@
       "apply": "确认导入",
       "confirmImport": "将新增 {channels} 个频道订阅和 {players} 个绑定，确定导入？",
       "imported": "导入成功",
-      "bestEffort": "{platform}：通用兼容"
+      "bestEffort": "{platform}：通用兼容",
+      "invalidRows": "另有 {invalid} 条记录格式无效，已忽略。"
     },
     "templates": {
       "title": "模板预览",

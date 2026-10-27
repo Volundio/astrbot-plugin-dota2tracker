@@ -165,15 +165,34 @@ def test_weekly_report_day_hours(value, expected, code):
 
 
 def test_proxy_and_ipv4_warnings():
-    _, issues = load_config(
+    config, issues = load_config(
         {
             "stratz_api_token": "t",
-            "proxy_address": "127.0.0.1:7890",
+            "proxy_address": "http://127.0.0.1:7890",
             "enable_opendota_fallback": True,
             "opendota_ip_stack": "ipv4",
         }
     )
-    assert codes(issues) == [("proxy_address", "format"), ("opendota_ip_stack", "ignored")]
+    assert config.proxy_address == "http://127.0.0.1:7890"
+    assert codes(issues) == [("opendota_ip_stack", "ignored")]
+
+
+@pytest.mark.parametrize(
+    "proxy",
+    ["127.0.0.1:7890", "socks4://user:SECRET@h:1", "http://", "ftp://h:1", "http://[::1"],
+)
+def test_invalid_proxy_is_an_error_and_ignored(proxy):
+    config, issues = load_config({"stratz_api_token": "t", "proxy_address": proxy})
+    assert config.proxy_address == ""
+    assert codes(issues) == [("proxy_address", "format")]
+    assert issues[0].level == "error"
+    assert "SECRET" not in issues[0].message  # the value may contain credentials
+
+
+@pytest.mark.parametrize("proxy", ["http://h:1", "HTTPS://h:1", "socks5://u:p@h:1", "socks5h://h:1"])
+def test_valid_proxy_schemes(proxy):
+    config, issues = load_config({"stratz_api_token": "t", "proxy_address": proxy})
+    assert config.proxy_address == proxy and issues == []
 
 
 def test_wrong_type_string_field_warns():

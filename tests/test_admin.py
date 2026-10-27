@@ -108,6 +108,7 @@ async def test_export_import_roundtrip_is_idempotent(services, admin, tmp_path):
             "channelsSkipped": 0,
             "playersAdded": 2,
             "playersSkipped": 0,
+            "invalid": 0,
             "dryRun": True,
         }
         assert await other.db.list_players() == []
@@ -117,6 +118,91 @@ async def test_export_import_roundtrip_is_idempotent(services, admin, tmp_path):
         assert {p.nickname for p in await other.db.list_players()} == {"Alice", ""}
     finally:
         await other.close()
+
+
+def _backup(channels, players) -> bytes:
+    return json.dumps({"format": EXPORT_FORMAT, "channels": channels, "players": players}).encode()
+
+
+def _channel(channel_id, *, umo=None, subscribed=True, locale=None):
+    return {
+        "umo": f"bot:GroupMessage:{channel_id}" if umo is None else umo,
+        "platform": "bot",
+        "platform_type": "aiocqhttp",
+        "channel_id": channel_id,
+        "subscribed": subscribed,
+        "locale": locale,
+        "name": "",
+    }
+
+
+def _player(user_id, steam_id, channel_id="1"):
+    return {
+        "umo": f"bot:GroupMessage:{channel_id}",
+        "platform": "bot",
+        "channel_id": channel_id,
+        "user_id": user_id,
+        "steam_id": steam_id,
+        "nickname": "",
+        "rank": {},
+    }
+
+
+async def test_import_validates_rows_before_writing(services, admin):
+    raw = _backup(
+        [_channel("1"), _channel("2", umo=""), _channel("3", umo=None) | {"umo": None}],
+        [
+            _player("a", 123),
+            _player("b", 2**70),  # used to raise OverflowError half-way through the import
+            _player("c", -5),
+            _player("d", "12345678901234"),
+            _player("e", True),
+            _player("f", "456"),
+        ],
+    )
+    report = await admin.import_data("t", raw, dry_run=False)
+    assert report["channelsAdded"] == 1 and report["playersAdded"] == 2 and report["invalid"] == 6
+    assert sorted(p.steam_id for p in await services.db.list_players()) == [123, 456]
+    assert [c.channel_id for c in await services.db.list_channels()] == ["1"]
+
+
+async def test_import_is_all_or_nothing(services, admin, monkeypatch):
+    from dota2tracker.data.database import Database
+
+    calls = 0
+    original = Database._restore_channel
+
+    async def flaky(conn, channel, now, report):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("disk full")
+        await original(conn, channel, now, report)
+
+    monkeypatch.setattr(Database, "_restore_channel", staticmethod(flaky))
+    with pytest.raises(RuntimeError):
+        await admin.import_data("t", _backup([_channel("1"), _channel("2")], [_player("a", 1)]), dry_run=False)
+    assert await services.db.list_channels() == [] and await services.db.list_players() == []
+    # The connection is usable afterwards (no transaction left open).
+    await services.db.subscribe_channel("bot:GroupMessage:9", "bot", "aiocqhttp", "9")
+    assert len(await services.db.list_channels()) == 1
+
+
+async def test_import_keeps_unsubscribed_channels_and_umo_uniqueness(services, admin):
+    await services.db.subscribe_channel("bot:GroupMessage:1", "bot", "aiocqhttp", "1")
+    raw = _backup(
+        [
+            _channel("5", subscribed=False, locale="en-US"),
+            _channel("6", umo="bot:GroupMessage:1"),  # UMO already used by channel 1
+        ],
+        [],
+    )
+    report = await admin.import_data("t", raw, dry_run=False)
+    assert report["channelsAdded"] == 1 and report["channelsSkipped"] == 1
+    channels = {c.channel_id: c for c in await services.db.list_channels()}
+    assert set(channels) == {"1", "5"}
+    assert channels["5"].subscribed is False and channels["5"].locale == "en-US"
+    assert channels["1"].channel_id == "1"  # not overwritten by channel 6
 
 
 def test_parse_import_rejects_foreign_formats():

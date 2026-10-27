@@ -2,8 +2,10 @@
 
 AstrBot renders HTML on a remote t2i service that cannot read local files, so
 local template images are embedded as data URIs. Templates call
-``img("medal_5")`` which yields a ``d2t-asset://`` placeholder; after Jinja
-rendering :meth:`ImageAssets.inline` replaces placeholders:
+``img("medal_5")`` which yields a ``d2t-asset-<token>://`` placeholder; after
+Jinja rendering :meth:`ImageAssets.inline` replaces placeholders. The token is
+random per instance so user text (nicknames, Steam names) can never forge a
+placeholder and get image data spliced into it:
 
 * used once → inlined ``data:`` URI;
 * used several times in ``<img src>`` → a tiny placeholder plus one shared
@@ -18,6 +20,7 @@ import base64
 import json
 import mimetypes
 import re
+import secrets
 from collections import Counter
 from functools import lru_cache
 from pathlib import Path
@@ -26,10 +29,8 @@ from ..constants import ASSETS_DIR, STEAM_CDN
 
 __all__ = ["ImageAssets"]
 
-ASSET_SCHEME = "d2t-asset://"
 TRANSPARENT_PIXEL = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-_PLACEHOLDER = re.compile(r"d2t-asset://([A-Za-z0-9_.+\-]+)")
-_IMG_SRC = re.compile(r"""(<img\b[^>]*?\s)src=(["'])d2t-asset://([A-Za-z0-9_.+\-]+)\2""", re.I)
+_NAME = r"([A-Za-z0-9_.+\-]+)"
 _SAFE = re.compile(r"^[A-Za-z0-9_.+\-]+$")
 
 
@@ -60,6 +61,11 @@ class ImageAssets:
     def __init__(self, images_dir: Path = ASSETS_DIR / "images", cdn: str = STEAM_CDN) -> None:
         self.images_dir = images_dir
         self.cdn = cdn.rstrip("/")
+        #: unguessable placeholder scheme, e.g. ``d2t-asset-1f0c9a7b3e5d://``
+        self.scheme = f"d2t-asset-{secrets.token_hex(8)}://"
+        scheme = re.escape(self.scheme)
+        self._placeholder = re.compile(scheme + _NAME)
+        self._img_src = re.compile(rf"""(<img\b[^>]*?\s)src=(["']){scheme}{_NAME}\2""", re.I)
 
     def url(self, image: object, kind: str | None = "local", fmt: str | None = "png") -> str:
         """``getImageUrl(image, type = Local, format = png)``."""
@@ -67,7 +73,7 @@ class ImageAssets:
         kind = kind or "local"
         fmt = fmt or "png"
         if kind == "local":
-            return f"{ASSET_SCHEME}{name}.{fmt}"
+            return f"{self.scheme}{name}.{fmt}"
         return f"{self.cdn}/{kind}/{name}.{fmt}"
 
     def data_uri(self, filename: str) -> str | None:
@@ -82,10 +88,10 @@ class ImageAssets:
         return self.data_uri(filename) is not None
 
     def inline(self, html: str) -> str:
-        names = _PLACEHOLDER.findall(html)
+        names = self._placeholder.findall(html)
         if not names:
             return html
-        img_counts = Counter(match.group(3) for match in _IMG_SRC.finditer(html))
+        img_counts = Counter(match.group(3) for match in self._img_src.finditer(html))
         shared: dict[str, str] = {}
 
         def img_replacement(match: re.Match[str]) -> str:
@@ -98,8 +104,8 @@ class ImageAssets:
                 return f"{prefix}src={quote}{TRANSPARENT_PIXEL}{quote} data-d2t-asset={quote}{name}{quote}"
             return f"{prefix}src={quote}{uri}{quote}"
 
-        html = _IMG_SRC.sub(img_replacement, html)
-        html = _PLACEHOLDER.sub(lambda m: self.data_uri(m.group(1)) or "", html)
+        html = self._img_src.sub(img_replacement, html)
+        html = self._placeholder.sub(lambda m: self.data_uri(m.group(1)) or "", html)
         if shared:
             script = (
                 "<script>(function(){var a="

@@ -12,7 +12,7 @@ def test_hero_1_renders(strict_renderer, preview_context, locale):
     view = build_preview("hero_1", preview_context(locale))
     html = strict_renderer.render_html("hero_1", view, locale)
     assert html.count('class="skill"') == len(view["abilities"])
-    assert "d2t-asset://" not in html
+    assert "d2t-asset-" not in html
     assert "<%" not in html
     assert '<span class="plus">+</span>' in html or "alternative" not in html
 

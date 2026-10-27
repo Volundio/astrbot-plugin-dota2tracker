@@ -86,7 +86,11 @@ class ReportTask:
         data = await self._stratz.query_players_matches_for_daily(steam_ids, int(data_start.timestamp()))
         match_ids = list(
             dict.fromkeys(
-                int(m["id"]) for p in (data or {}).get("players") or [] for m in p.get("matches") or [] if m.get("id")
+                int(m["id"])
+                for p in (data or {}).get("players") or []
+                if p
+                for m in p.get("matches") or []
+                if m.get("id")
             )
         )
         extensions = await self._db.get_match_extensions(match_ids)
@@ -114,6 +118,8 @@ class ReportTask:
             hero_image,
             hero_image,
             PLUGIN_NAME,
+            end_date=today,
+            on_error=lambda key, error: self._reporter.report(error, f"daily-report/{key}"),
         )
 
     async def run_daily(self) -> None:
@@ -173,7 +179,14 @@ class ReportTask:
             if profile and profile.get("nick"):
                 names[binding.id] = str(profile["nick"])
 
-        for entry in build_legacy_report(channels, bindings, players_data, names):
+        entries = build_legacy_report(
+            channels,
+            bindings,
+            players_data,
+            names,
+            on_error=lambda key, error: self._reporter.report(error, f"weekly-report/{key}"),
+        )
+        for entry in entries:
             channel = entry["channel"]
             try:
                 locale = await self._locale(channel.platform, channel.channel_id)

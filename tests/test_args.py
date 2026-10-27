@@ -7,12 +7,13 @@ import math
 import pytest
 
 from dota2tracker.commands.args import parse_args, tokenize
-from dota2tracker.commands.registry import COMMANDS, COMMANDS_BY_KEY, extract_raw_args, help_rows
+from dota2tracker.commands.registry import COMMANDS, COMMANDS_BY_KEY, extract_raw_args, help_rows, wants_help
 
 MATCH = COMMANDS_BY_KEY["query-match"].options
 PLAYER = COMMANDS_BY_KEY["query-player"].options
 HERO = COMMANDS_BY_KEY["query-hero"].options
 DAYS = COMMANDS_BY_KEY["hero-of-the-day"].options
+BIND_OPTIONS = COMMANDS_BY_KEY["bind"].options
 
 
 @pytest.mark.parametrize(
@@ -124,38 +125,48 @@ def test_registry_order_and_keys():
     ]
 
 
+BIND = COMMANDS_BY_KEY["bind"].names
+
+
 @pytest.mark.parametrize(
     "message",
-    [
-        "/绑定 123 小明",
-        "绑定 123 小明",
-        "dota2tracker bind 123 小明",
-        "/dota2tracker  bind   123 小明",
-        "dota2tracker.bind 123 小明",
-    ],
+    ["/绑定 123 小明", "绑定 123 小明", "dota2tracker.bind 123 小明", "  /dota2tracker.bind   123 小明"],
 )
 def test_extract_raw_args_forms(message):
-    assert extract_raw_args(message, COMMANDS_BY_KEY["bind"]) == "123 小明"
+    assert extract_raw_args(message, BIND) == "123 小明"
 
 
-@pytest.mark.parametrize("message", ["绑定", "/绑定", "dota2tracker bind", "dota2tracker.bind", "  绑定  "])
+@pytest.mark.parametrize("message", ["绑定", "/绑定", "dota2tracker.bind", "  绑定  "])
 def test_extract_raw_args_without_arguments(message):
-    assert extract_raw_args(message, COMMANDS_BY_KEY["bind"]) == ""
+    assert extract_raw_args(message, BIND) == ""
 
 
 def test_extract_raw_args_alias_prefix_not_confused():
     # "绑定x" is not the "绑定" alias followed by whitespace: falls back to first-token split.
-    assert extract_raw_args("绑定x 1", COMMANDS_BY_KEY["bind"]) == "1"
-    assert extract_raw_args("取消绑定", COMMANDS_BY_KEY["unbind"]) == ""
-    assert extract_raw_args("DOTA2帮助", COMMANDS_BY_KEY["help"]) == ""
-    assert extract_raw_args("dota2tracker binding 5", COMMANDS_BY_KEY["bind"]) == "binding 5"
+    assert extract_raw_args("绑定x 1", BIND) == "1"
+    assert extract_raw_args("取消绑定", COMMANDS_BY_KEY["unbind"].names) == ""
+    assert extract_raw_args("DOTA2帮助", COMMANDS_BY_KEY["help"].names) == ""
+
+
+def test_extract_raw_args_follows_renamed_commands():
+    # Names come from the live AstrBot filter: a renamed command or a name with spaces.
+    assert extract_raw_args("/bd 123 小明", ["bd", "绑定"]) == "123 小明"
+    assert extract_raw_args("dt   bind 123", ["dt bind"]) == "123"
+    assert extract_raw_args("dt bind", ["dt bind"]) == ""
 
 
 def test_extract_raw_args_keeps_quotes_and_options():
-    spec = COMMANDS_BY_KEY["query-match"]
-    assert extract_raw_args("/查询比赛 123 -p -t match_2", spec) == "123 -p -t match_2"
-    spec = COMMANDS_BY_KEY["query-player"]
-    assert extract_raw_args("查询玩家 “a b” -o 敌法", spec) == "“a b” -o 敌法"
+    names = COMMANDS_BY_KEY["query-match"].names
+    assert extract_raw_args("/查询比赛 123 -p -t match_2", names) == "123 -p -t match_2"
+    names = COMMANDS_BY_KEY["query-player"].names
+    assert extract_raw_args("查询玩家 “a b” -o 敌法", names) == "“a b” -o 敌法"
+    assert extract_raw_args("改名 a\nb", COMMANDS_BY_KEY["rename"].names) == "a\nb"
+
+
+def test_wants_help():
+    assert wants_help(parse_args("-h", BIND_OPTIONS).options)
+    assert wants_help(parse_args("123 --help", BIND_OPTIONS).options)
+    assert not wants_help(parse_args("123 x", BIND_OPTIONS).options)
 
 
 def test_help_rows(i18n):
@@ -163,8 +174,9 @@ def test_help_rows(i18n):
     assert len(rows) == len(COMMANDS)
     assert all(len(row) == 6 for row in rows)
     bind = rows[3]
-    assert bind[0] == "dota2tracker bind"
-    assert bind[1] == "绑定\ndota2tracker.bind"
+    # Same columns as the original: command name, then the other aliases.
+    assert bind[0] == "dota2tracker.bind"
+    assert bind[1] == "绑定"
     assert bind[2] == "<steam_id> [nick_name]"
     assert bind[3]
     match = rows[7]
@@ -176,7 +188,7 @@ def test_help_rows(i18n):
     for line in match[4].split("\n"):
         assert not line.split("] ", 1)[1].startswith("-p ")
     assert rows[0][4] == ""
-    assert rows[0][1] == "DOTA2指南\nDOTA2帮助\nDOTA2说明\ndota2tracker.help"
+    assert rows[0][1] == "DOTA2指南\nDOTA2帮助\nDOTA2说明"
 
 
 def test_help_rows_missing_text():

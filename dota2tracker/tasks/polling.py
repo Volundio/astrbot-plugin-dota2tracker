@@ -1,8 +1,18 @@
 """Parse polling (port of ``tasks/parse-polling.task.ts``).
 
-Pending matches are persisted in SQLite so a plugin reload neither loses
-waiting requests nor publishes a match twice (target fix: the original kept
-them only in memory).
+Target fixes over the original (DEVELOPMENT.md §9.5):
+
+* pending matches are persisted in SQLite and every destination is removed
+  from the entry as soon as it has been handled, so a reload only resumes the
+  destinations that are still waiting (at most the in-flight message can be
+  repeated);
+* a destination whose image could not be formatted/rendered stays pending and
+  is retried on the next round, up to ``MAX_PUBLISH_ATTEMPTS`` rounds;
+* the entry is finished (pending row deleted + sent marker written) in one
+  transaction and only when no destination is left, so subscribers added
+  while a publication is running are not lost;
+* entries that still have no data ``PENDING_GRACE_SECONDS`` after the parse
+  timeout are dropped instead of being polled forever.
 """
 
 from __future__ import annotations
@@ -26,7 +36,12 @@ from ..presentation.images import ImageFactory
 from ..presentation.messages import MessageBuilder
 from .ports import MessageSender
 
-__all__ = ["ParsePollingTask", "PendingEntry"]
+__all__ = ["MAX_PUBLISH_ATTEMPTS", "PENDING_GRACE_SECONDS", "ParsePollingTask", "PendingEntry"]
+
+#: Rounds a destination may fail to format/render before it is given up.
+MAX_PUBLISH_ATTEMPTS = 3
+#: How long past the parse timeout an entry without any data is kept.
+PENDING_GRACE_SECONDS = 24 * 60 * 60
 
 
 @dataclass
@@ -34,6 +49,8 @@ class PendingEntry:
     match_id: int
     request_time: float
     subscribers: list[Subscriber] = field(default_factory=list)
+    #: failed publication rounds (in memory only; reset by a reload)
+    attempts: int = 0
 
 
 class ParsePollingTask:
@@ -166,8 +183,8 @@ class ParsePollingTask:
 
     async def _poll_entry(self, entry: PendingEntry) -> None:
         timeout_seconds = self._config.data_parsing_timeout_minutes * 60
-        now = self._clock()
-        need_to_wait = now < entry.request_time + timeout_seconds
+        age = self._clock() - entry.request_time
+        need_to_wait = age < timeout_seconds
         result: MatchResult | None = None
         try:
             result = await self._matches.get_match_result(
@@ -179,29 +196,57 @@ class ParsePollingTask:
         if result is not None and result.ready and result.match_data:
             await self._publish(entry, result.match_data)
             return
+        if age >= timeout_seconds + PENDING_GRACE_SECONDS:
+            self._logger.warning(
+                self._i18n.gt(
+                    "dota2tracker.logger.pending_expired",
+                    {"matchId": entry.match_id, "hours": math.floor(age / 3600)},
+                )
+            )
+            await self._finish(entry, force=True)
+            return
         if result is None or result.status == "PENDING":
-            waiting = math.floor((now - entry.request_time) / 60)
+            waiting = math.floor(age / 60)
             if waiting > 0 and waiting % 5 == 0:
                 self._logger.info(
                     self._i18n.gt("dota2tracker.logger.waiting_for_parse", {"matchId": entry.match_id, "time": waiting})
                 )
                 if self._config.enable_opendota_fallback and self._opendota is not None:
                     self._spawn(self._request_opendota_parse(entry.match_id))
-            return
         # NOT_FOUND keeps the entry until the timeout turns it into an unparsed
-        # report, mirroring the original (which only removed READY entries).
+        # report (or the grace period above gives up on it).
+
+    async def _remove(self, entry: PendingEntry, done: list[Subscriber]) -> None:
+        """Drop handled destinations from the entry and persist the progress."""
+        async with self._lock:
+            entry.subscribers = [s for s in entry.subscribers if not any(s is d for d in done)]
+            if self._pending.get(entry.match_id) is entry:
+                await self._persist(entry)
+
+    async def _finish(self, entry: PendingEntry, *, force: bool = False) -> bool:
+        """Finish the entry when no destination is left (or unconditionally with ``force``)."""
+        async with self._lock:
+            if entry.subscribers and not force:
+                return False
+            if self._pending.get(entry.match_id) is entry:
+                del self._pending[entry.match_id]
+            await self._cache.finish_pending_match(entry.match_id)
+            return True
 
     async def _publish(self, entry: PendingEntry, match_query: dict[str, Any]) -> None:
+        targets = list(entry.subscribers)
         by_locale: dict[str, list[Subscriber]] = {}
-        for subscriber in entry.subscribers:
+        for subscriber in targets:
             by_locale.setdefault(subscriber.language_tag, []).append(subscriber)
 
         delivered: list[dict[str, str]] = []
+        failed: list[Subscriber] = []
         for locale, subscribers in by_locale.items():
             try:
                 match = await self._matches.generate_match_data(match_query)
             except Exception as error:
                 self._reporter.report(error, "parse-polling/format")
+                failed.extend(subscribers)
                 continue
             default_image = None
             for subscriber in subscribers:
@@ -217,6 +262,7 @@ class ParsePollingTask:
                         image = await self._images.match(match, locale, template)
                 except Exception as error:
                     self._reporter.report(error, "parse-polling/render")
+                    failed.append(subscriber)
                     continue
                 text = self._messages.match_message(locale, match, [p.steam_id for p in subscriber.relevant_players])
                 try:
@@ -224,25 +270,35 @@ class ParsePollingTask:
                 except Exception as error:
                     self._reporter.report(error, f"send/{subscriber.umo}")
                     ok = False
+                # Delivered or refused by the platform (bot left the group, …): handled either way.
+                await self._remove(entry, [subscriber])
                 if ok:
                     delivered.append(
                         {"platform": subscriber.platform, "guildId": subscriber.channel_id, "languageTag": locale}
                     )
 
-        match_info = match_query.get("match") or {}
-        parsed = "parsed" if match_info.get("parsedDateTime") else "unparsed"
-        self._logger.info(
-            self._i18n.gt(
-                f"dota2tracker.logger.match_{parsed}",
-                {
-                    "matchId": match_info.get("id", entry.match_id),
-                    "timeout": self._config.data_parsing_timeout_minutes,
-                    "guilds": delivered,
-                    "odParsed": match_info.get("odParsed"),
-                },
+        if delivered:
+            match_info = match_query.get("match") or {}
+            parsed = "parsed" if match_info.get("parsedDateTime") else "unparsed"
+            self._logger.info(
+                self._i18n.gt(
+                    f"dota2tracker.logger.match_{parsed}",
+                    {
+                        "matchId": match_info.get("id", entry.match_id),
+                        "timeout": self._config.data_parsing_timeout_minutes,
+                        "guilds": delivered,
+                        "odParsed": match_info.get("odParsed"),
+                    },
+                )
             )
-        )
-        await self._cache.mark_match_sent(entry.match_id)
-        async with self._lock:
-            self._pending.pop(entry.match_id, None)
-            await self._db.delete_pending_match(entry.match_id)
+        if failed:
+            entry.attempts += 1
+            if entry.attempts >= MAX_PUBLISH_ATTEMPTS:
+                self._logger.error(
+                    self._i18n.gt(
+                        "dota2tracker.logger.publish_gave_up",
+                        {"matchId": entry.match_id, "count": len(failed), "attempts": entry.attempts},
+                    )
+                )
+                await self._remove(entry, failed)
+        await self._finish(entry)

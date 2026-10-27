@@ -1,18 +1,28 @@
-"""Command metadata shared by ``main.py`` registration, argument parsing and the help table.
+"""Command metadata shared by ``main.py`` registration, argument parsing and help output.
 
-Each command is reachable three ways in AstrBot:
-
-* ``/dota2tracker <name>`` – the command group form (AstrBot names may not contain spaces);
-* ``/<中文别名>`` – the original Chinese aliases;
-* ``/dota2tracker.<name>`` – the original Koishi command name.
+Each command is registered once, exactly like the Koishi original: the name
+``dota2tracker.<key>`` plus its Chinese aliases. (An extra ``/dota2tracker
+<key>`` command-group form was dropped in 1.1.1: as a second AstrBot handler
+it escaped per-command permissions configured on the first one.)
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 
-__all__ = ["COMMANDS", "COMMANDS_BY_KEY", "CommandSpec", "OptionSpec", "extract_raw_args", "help_rows"]
+__all__ = [
+    "COMMANDS",
+    "COMMANDS_BY_KEY",
+    "GROUP",
+    "CommandSpec",
+    "OptionSpec",
+    "extract_raw_args",
+    "help_rows",
+    "option_entries",
+    "wants_help",
+]
 
 GROUP = "dota2tracker"
 
@@ -46,8 +56,9 @@ class CommandSpec:
         return f"{GROUP}.{self.key}"
 
     @property
-    def display_name(self) -> str:
-        return f"{GROUP} {self.key}"
+    def names(self) -> tuple[str, ...]:
+        """Default trigger names (AstrBot may rename them at runtime)."""
+        return (self.legacy_name, *self.aliases)
 
     @property
     def i18n_prefix(self) -> str:
@@ -79,52 +90,63 @@ COMMANDS: tuple[CommandSpec, ...] = (
 COMMANDS_BY_KEY = {spec.key: spec for spec in COMMANDS}
 
 
+def option_entries(raw_text, spec: CommandSpec) -> list[tuple[str, str]]:
+    """``(syntax, description)`` for each option that has a description.
+
+    The locale descriptions repeat the flags (``"-p, --parse 说明"``); like
+    the original ``buildHelpMessage`` the leading flag is stripped.
+    """
+    entries = []
+    for option in spec.options:
+        description = raw_text(f"{spec.i18n_prefix}.options.{option.name}")
+        if not description:
+            continue
+        for flag in option.flags:
+            if description.startswith(flag + " "):
+                description = description[len(flag) + 1 :]
+                break
+        entries.append((option.syntax, description))
+    return entries
+
+
 def help_rows(raw_text, text) -> list[list[str]]:
     """Rows of the help table (``MessageBuilder.buildHelpMessage``).
 
     ``raw_text(key)`` returns the raw locale entry (``ctx.i18n._data``) and
     ``text(key)`` the rendered translation.
     """
-    rows = []
-    for spec in COMMANDS:
-        options = []
-        for option in spec.options:
-            description = raw_text(f"{spec.i18n_prefix}.options.{option.name}")
-            if not description:
-                continue
-            for flag in option.flags:
-                if description.startswith(flag + " "):
-                    description = description[len(flag) + 1 :]
-                    break
-            options.append(f"[{option.syntax}] {description}")
-        rows.append(
-            [
-                spec.display_name,
-                "\n".join([*spec.aliases, spec.legacy_name]),
-                spec.arguments,
-                text(f"{spec.i18n_prefix}.usage") or "",
-                "\n".join(options),
-                text(f"{spec.i18n_prefix}.examples") or "",
-            ]
-        )
-    return rows
+    return [
+        [
+            spec.legacy_name,
+            "\n".join(spec.aliases),
+            spec.arguments,
+            text(f"{spec.i18n_prefix}.usage") or "",
+            "\n".join(f"[{syntax}] {description}" for syntax, description in option_entries(raw_text, spec)),
+            text(f"{spec.i18n_prefix}.examples") or "",
+        ]
+        for spec in COMMANDS
+    ]
 
 
-def extract_raw_args(message: str, spec: CommandSpec) -> str:
-    """Text after the command name, whichever of the three forms was used.
+def wants_help(options: dict[str, object]) -> bool:
+    """Koishi's implicit ``-h`` / ``--help`` option."""
+    return bool(options.get("h") or options.get("help"))
 
-    AstrBot strips the wake prefix from ``message_str``; a leftover ``/`` is
-    tolerated. Unknown forms return the text unchanged minus its first token.
+
+def extract_raw_args(message: str, names: Iterable[str]) -> str:
+    """Text after the command name that triggered the handler.
+
+    ``names`` are the handler's current complete command names (they follow
+    renames done in AstrBot's command management). AstrBot strips the wake
+    prefix from ``message_str``; a leftover ``/`` is tolerated, and names
+    containing spaces match any run of whitespace. Unknown forms return the
+    text minus its first token.
     """
     text = message.strip().lstrip("/")
-    names = sorted([spec.legacy_name, *spec.aliases], key=len, reverse=True)
-    group = re.match(rf"^{re.escape(GROUP)}\s+{re.escape(spec.key)}(?:\s+|$)", text)
-    if group:
-        return text[group.end() :].strip()
-    for name in names:
-        if text == name:
-            return ""
-        if text.startswith(name) and text[len(name)].isspace():
-            return text[len(name) :].strip()
+    for name in sorted({n.strip() for n in names if n and n.strip()}, key=len, reverse=True):
+        pattern = r"\s+".join(re.escape(part) for part in name.split())
+        found = re.match(rf"^{pattern}(?:\s+|$)", text)
+        if found:
+            return text[found.end() :].strip()
     parts = text.split(None, 1)
     return parts[1].strip() if len(parts) > 1 else ""

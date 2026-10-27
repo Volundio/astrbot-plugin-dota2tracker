@@ -141,11 +141,11 @@ async def test_web_api_routes_registered(plugin):
     assert plugin.services.scheduler.running  # platforms already loaded -> started in initialize
 
 
-async def test_subscribe_bind_via_three_command_forms(plugin):
+async def test_subscribe_via_alias_and_koishi_name(plugin):
     event = FakeEvent("订阅本群")
     result = texts(await collect(plugin.cmd_subscribe(event)))
     assert result and event.stopped
-    again = texts(await collect(plugin.group_subscribe(FakeEvent("dota2tracker subscribe"))))
+    again = texts(await collect(plugin.cmd_subscribe(FakeEvent("dota2tracker.subscribe"))))
     assert again != result  # "already subscribed" text
     channel = (await plugin.services.db.list_channels())[0]
     assert channel.umo == "napcat:GroupMessage:100" and channel.platform == "napcat"
@@ -153,6 +153,73 @@ async def test_subscribe_bind_via_three_command_forms(plugin):
     status = await plugin.admin.status()
     assert status["platforms"] == {"onebot": True, "running": ["aiocqhttp"]}
     assert status["counts"]["subscribed_channels"] == 1
+
+
+def _command_filters():
+    from astrbot.core.star.filter.command import CommandFilter
+    from astrbot.core.star.filter.command_group import CommandGroupFilter
+    from astrbot.core.star.star_handler import star_handlers_registry
+
+    module = f"{PACKAGE}.main"
+    found = []
+    for metadata in star_handlers_registry:
+        if metadata.handler_module_path != module:
+            continue
+        for event_filter in metadata.event_filters:
+            assert not isinstance(event_filter, CommandGroupFilter)
+            if isinstance(event_filter, CommandFilter):
+                found.append((metadata.handler_name, event_filter))
+    return found
+
+
+async def test_each_command_has_a_single_handler(plugin):
+    from dota2tracker.commands.registry import COMMANDS
+
+    names = [name for _, f in _command_filters() for name in f.get_complete_command_names()]
+    assert len(names) == len(set(names))
+    for spec in COMMANDS:
+        assert names.count(spec.legacy_name) == 1
+        assert all(names.count(alias) == 1 for alias in spec.aliases)
+    assert "dota2tracker" in names  # root overview
+
+
+async def test_renamed_command_still_parses_arguments(plugin):
+    event_filter = dict(_command_filters())["cmd_bind"]
+    original = (event_filter.command_name, set(event_filter.alias))
+    try:
+        event_filter.command_name, event_filter.alias = "bd", {"绑"}
+        event_filter._cmpl_cmd_names = None
+        assert sorted(plugin._command_names("bind")) == ["bd", "绑"]
+        captured = {}
+
+        async def fake_run(key, chat, raw, tips):
+            captured["raw"] = raw
+            return
+            yield
+
+        plugin.services.commands.run = fake_run
+        await collect(plugin.cmd_bind(FakeEvent("bd 123 小明")))
+        assert captured["raw"] == "123 小明"
+    finally:
+        event_filter.command_name, event_filter.alias = original
+        event_filter._cmpl_cmd_names = None
+
+
+async def test_help_option_and_root_overview(plugin):
+    [text] = texts(await collect(plugin.cmd_bind(FakeEvent("绑定 -h"))))
+    assert text.startswith("指令：dota2tracker.bind <steam_id> [nick_name]")
+    assert "使用示例：" in text and "    绑定 123456789" in text
+    [text] = texts(await collect(plugin.cmd_query_match(FakeEvent("查询比赛 --help"))))
+    assert "可用的选项有：" in text and "-p, --parse" in text
+    [text] = texts(await collect(plugin.cmd_root(FakeEvent("dota2tracker"))))
+    assert "可用的子指令有：" in text and "dota2tracker.hero-of-the-day" in text
+
+
+async def test_storage_failure_is_not_leaked_to_chat(plugin):
+    await plugin.services.db.close()
+    [text] = texts(await collect(plugin.cmd_unbind(FakeEvent("取消绑定"))))
+    assert text == "指令执行失败，请稍后再试。"
+    assert "database" not in text
 
 
 async def test_other_platforms_work(plugin):

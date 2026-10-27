@@ -205,7 +205,8 @@ function renderImport() {
   }
   const r = state.preview;
   const summary = t(r.dryRun ? "views.subscriptions.previewResult" : "views.subscriptions.importDone", {
-    channelsAdded: r.channelsAdded, channelsSkipped: r.channelsSkipped, playersAdded: r.playersAdded, playersSkipped: r.playersSkipped });
+    channelsAdded: r.channelsAdded, channelsSkipped: r.channelsSkipped, playersAdded: r.playersAdded, playersSkipped: r.playersSkipped })
+    + (r.invalid ? " " + t("views.subscriptions.invalidRows", { invalid: r.invalid }) : "");
   if (!r.dryRun) return setContent(box, h("div", { class: "banner ok", text: summary }));
   const nothing = !r.channelsAdded && !r.playersAdded;
   const apply = h("button", { type: "button", class: "danger", text: t("views.subscriptions.apply"), disabled: nothing, onclick: () => applyImport(apply) });

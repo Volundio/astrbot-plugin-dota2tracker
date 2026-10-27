@@ -19,7 +19,7 @@ from dota2tracker.presentation.viewmodels.item import (
 def test_item_renders(strict_renderer, preview_context, locale, variant):
     view = build_preview("item", preview_context(locale, variant))
     html = strict_renderer.render_html("item", view, locale)
-    assert "d2t-asset://" not in html
+    assert "d2t-asset-" not in html
     assert 'class="recipes"' in html
     assert "%" not in view["abilities"][0]["desc"].replace('<span class="value">%</span>', "")
 

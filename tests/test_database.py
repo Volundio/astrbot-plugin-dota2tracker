@@ -255,3 +255,49 @@ async def test_reopen_persists(tmp_db_path):
     assert (await reopened.get_player("aiocqhttp", "1001", "u1")).nickname == "nick"
     assert await reopened.cache_get("ns", "k") == {"x": 1}
     await reopened.close()
+
+
+# ----------------------------------------------------------------- 1.1.1 fixes
+async def test_transaction_cancelled_during_begin_leaves_connection_usable(tmp_db_path):
+    import asyncio
+
+    database = Database(tmp_db_path)
+    await database.open()
+    # Keep aiosqlite's worker busy so BEGIN is still queued when the caller is cancelled.
+    blocker = asyncio.create_task(database.conn._execute(time.sleep, 0.3))
+    await asyncio.sleep(0.05)
+
+    async def subscribe():
+        await database.subscribe_channel("u:GroupMessage:1", "u", "aiocqhttp", "1")
+
+    task = asyncio.create_task(subscribe())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await blocker
+    assert not database.conn.in_transaction
+    # Later transactions work and are committed.
+    assert await database.subscribe_channel("u:GroupMessage:2", "u", "aiocqhttp", "2")
+    await database.close()
+    await database.open()
+    assert [c.channel_id for c in await database.list_channels()] == ["2"]
+    await database.close()
+
+
+async def test_transaction_rolls_back_on_error(db):
+    with pytest.raises(RuntimeError):
+        async with db.transaction() as conn:
+            await conn.execute(
+                "INSERT INTO channels(umo, platform, channel_id, created_at, updated_at) VALUES('x', 'p', 'c', 0, 0)"
+            )
+            raise RuntimeError("boom")
+    assert await db.list_channels() == []
+    assert not db.conn.in_transaction
+
+
+async def test_finish_pending_match_is_atomic(db):
+    await db.save_pending_match(5, 100, [{"umo": "x"}])
+    await db.finish_pending_match(5, 60)
+    assert await db.list_pending_matches() == []
+    assert await db.is_match_sent(5)

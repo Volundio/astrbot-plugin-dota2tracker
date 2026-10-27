@@ -16,7 +16,7 @@ def test_rank_fun_renders(strict_renderer, preview_context, locale, variant):
     html = strict_renderer.render_html("rank_fun", view, locale)
     kind = "bei" if variant == "down" else "xi"
     assert f'<body class="{kind}"' in html
-    assert "d2t-asset://" not in html
+    assert "d2t-asset-" not in html
     assert "PLACEHOLDER" not in html
 
 

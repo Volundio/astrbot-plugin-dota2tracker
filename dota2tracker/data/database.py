@@ -9,6 +9,7 @@ updates run inside explicit transactions guarded by an ``asyncio.Lock``.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -100,6 +101,10 @@ _MIGRATIONS: dict[int, list[str]] = {
         )""",
     ],
 }
+
+
+class _DryRun(Exception):
+    """Raised inside :meth:`Database.restore_bindings` to roll back a dry run."""
 
 
 class AlreadyBoundError(Exception):
@@ -296,15 +301,34 @@ class Database:
 
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[aiosqlite.Connection]:
+        """``BEGIN IMMEDIATE`` … ``COMMIT``; any failure (including cancellation) rolls back.
+
+        aiosqlite runs statements on its worker thread even when the awaiting
+        task is cancelled, so the rollback first waits for ``BEGIN`` to finish
+        and then always issues ``ROLLBACK`` after the queued statements. A
+        cancelled caller can therefore never leave the connection inside an
+        open transaction.
+        """
         async with self._lock:
-            await self.conn.execute("BEGIN IMMEDIATE")
+            conn = self.conn
+            begin = asyncio.ensure_future(conn.execute("BEGIN IMMEDIATE"))
             try:
-                yield self.conn
+                await asyncio.shield(begin)
+                yield conn
+                await asyncio.shield(asyncio.ensure_future(conn.execute("COMMIT")))
             except BaseException:
-                await self.conn.execute("ROLLBACK")
+                await asyncio.shield(self._rollback_after(conn, begin))
                 raise
-            else:
-                await self.conn.execute("COMMIT")
+
+    @staticmethod
+    async def _rollback_after(conn: aiosqlite.Connection, begin: asyncio.Future[Any]) -> None:
+        with contextlib.suppress(Exception):
+            await begin
+        if not conn.in_transaction:
+            return
+        # "no transaction is active" when a queued COMMIT already finished.
+        with contextlib.suppress(Exception):
+            await conn.execute("ROLLBACK")
 
     async def _fetchone(self, sql: str, params: Sequence[Any] = ()) -> aiosqlite.Row | None:
         async with self.conn.execute(sql, params) as cursor:
@@ -541,6 +565,16 @@ class Database:
     async def delete_pending_match(self, match_id: int) -> None:
         await self._execute("DELETE FROM pending_matches WHERE match_id=?", (int(match_id),))
 
+    async def finish_pending_match(self, match_id: int, sent_ttl_seconds: int) -> None:
+        """Atomically drop a pending match and mark it as sent (no window for duplicates)."""
+        async with self.transaction() as conn:
+            await conn.execute("DELETE FROM pending_matches WHERE match_id=?", (int(match_id),))
+            await conn.execute(
+                "INSERT INTO sent_matches(match_id, expires_at) VALUES(?, ?)"
+                " ON CONFLICT(match_id) DO UPDATE SET expires_at=excluded.expires_at",
+                (int(match_id), _now() + sent_ttl_seconds),
+            )
+
     async def list_pending_matches(self) -> list[PendingMatchRecord]:
         rows = await self._fetchall("SELECT * FROM pending_matches ORDER BY request_time, match_id")
         records = []
@@ -558,6 +592,94 @@ class Database:
                 )
             )
         return records
+
+    # ------------------------------------------------------------ backup restore
+    async def restore_bindings(
+        self, channels: list[dict[str, Any]], players: list[dict[str, Any]], *, dry_run: bool
+    ) -> dict[str, int]:
+        """Restore validated channel/binding rows in one transaction (all or nothing).
+
+        Existing rows are never overwritten: an existing channel is only
+        re-subscribed when the backup says it was subscribed, and an existing
+        binding (same platform, channel and user) is skipped. A channel whose
+        UMO already belongs to another channel is skipped as well. With
+        ``dry_run`` the very same statements run and are then rolled back, so
+        the returned counts are exact.
+        """
+        report = {"channelsAdded": 0, "channelsSkipped": 0, "playersAdded": 0, "playersSkipped": 0}
+        now = _now()
+        try:
+            async with self.transaction() as conn:
+                for channel in channels:
+                    await self._restore_channel(conn, channel, now, report)
+                for player in players:
+                    async with conn.execute(
+                        "SELECT 1 FROM players WHERE platform=? AND channel_id=? AND user_id=?",
+                        (player["platform"], player["channel_id"], player["user_id"]),
+                    ) as cursor:
+                        exists = await cursor.fetchone()
+                    if exists is not None:
+                        report["playersSkipped"] += 1
+                        continue
+                    await conn.execute(
+                        "INSERT INTO players(umo, platform, channel_id, user_id, steam_id, nickname, rank_json,"
+                        " created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            player["umo"],
+                            player["platform"],
+                            player["channel_id"],
+                            player["user_id"],
+                            int(player["steam_id"]),
+                            player["nickname"],
+                            _dumps(player["rank"]),
+                            now,
+                            now,
+                        ),
+                    )
+                    report["playersAdded"] += 1
+                if dry_run:
+                    raise _DryRun
+        except _DryRun:
+            pass
+        return report
+
+    @staticmethod
+    async def _restore_channel(
+        conn: aiosqlite.Connection, channel: dict[str, Any], now: int, report: dict[str, int]
+    ) -> None:
+        async with conn.execute(
+            "SELECT id, subscribed FROM channels WHERE platform=? AND channel_id=?",
+            (channel["platform"], channel["channel_id"]),
+        ) as cursor:
+            row = await cursor.fetchone()
+        if row is not None:
+            if channel["subscribed"] and not row["subscribed"]:
+                await conn.execute("UPDATE channels SET subscribed=1, updated_at=? WHERE id=?", (now, row["id"]))
+                report["channelsAdded"] += 1
+            else:
+                report["channelsSkipped"] += 1
+            return
+        async with conn.execute("SELECT 1 FROM channels WHERE umo=?", (channel["umo"],)) as cursor:
+            umo_taken = await cursor.fetchone()
+        if umo_taken is not None:
+            report["channelsSkipped"] += 1
+            return
+        await conn.execute(
+            "INSERT INTO channels(umo, platform, platform_type, channel_id, subscribed, locale, name,"
+            " created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                channel["umo"],
+                channel["platform"],
+                channel["platform_type"],
+                channel["channel_id"],
+                1 if channel["subscribed"] else 0,
+                channel["locale"],
+                channel["name"],
+                now,
+                now,
+            ),
+        )
+        report["channelsAdded"] += 1
 
     # --------------------------------------------------------------------- cache
     async def cache_get(self, namespace: str, key: str) -> Any:
